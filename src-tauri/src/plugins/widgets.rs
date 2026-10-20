@@ -112,7 +112,7 @@ fn fronts() -> &'static Mutex<HashMap<String, Option<isize>>> {
     FRONTS.get_or_init(Mutex::default)
 }
 
-fn saved_place(app: &tauri::AppHandle, id: &str, name: &str) -> Option<(i32, i32)> {
+pub fn saved_place(app: &tauri::AppHandle, id: &str, name: &str) -> Option<(i32, i32)> {
     let value = app.try_state::<AppState>()?.settings.get(&place_key(id, name))?;
     let (x, y) = value.split_once(',')?;
     Some((x.trim().parse().ok()?, y.trim().parse().ok()?))

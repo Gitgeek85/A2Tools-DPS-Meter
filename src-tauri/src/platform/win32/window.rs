@@ -174,6 +174,11 @@ pub fn hide_in_place(window: &tauri::WebviewWindow) {
     hide_without_focus(window);
 }
 
+/// The meter places its own windows here.
+pub fn places_own_windows() -> bool {
+    true
+}
+
 /// Windows are placed by the meter itself here (Linux on Wayland asks KWin).
 pub fn keep_places(
     _save: impl Fn(&str, (i32, i32, i32, i32)) + Send + Sync + 'static,
