@@ -13,7 +13,7 @@ const SETTING_CHOICES = {
   // A pattern over the meter's bars: a supporter's perk (applyBarTexture).
   // The Settings window's own colours (styles.css, data-settings-theme):
   // "meter" keeps the meter theme's accent.
-  settingsTheme: { allowed: ["meter", "midnight", "graphite", "violet", "forest", "crimson"], fallback: "meter" },
+  settingsTheme: { allowed: ["meter", "midnight", "graphite", "violet", "forest", "crimson", "ocean", "sapphire", "indigo", "rose", "sunset", "amber", "copper", "lime", "ice", "slate", "onyx"], fallback: "meter" },
   barTexture: { allowed: ["none", "flames", "crystal", "glacier", "feathers", "wing", "storm", "nebula", "galaxy", "aura"], fallback: "none" },
 };
 // Themes whose bars differ from one another show those colours in the theme
@@ -3648,7 +3648,27 @@ class DpsApp {
         const wasOpen = menu.classList.contains("isOpen");
         closeAll();
         menu.classList.toggle("isOpen", !wasOpen);
+        if (!wasOpen) fitMenu(menu);
       };
+    };
+
+    // A long menu (the colour themes) ran past the bottom of the scrolling
+    // pane, under the Appearance preview: it ends there now and scrolls.
+    // The rects are in screen pixels and the panel is zoomed, so the room is
+    // scaled back to the menu's own pixels.
+    const fitMenu = (menu) => {
+      menu.style.maxHeight = "";
+      menu.style.overflowY = "";
+      let pane = menu.parentElement;
+      while (pane && !/(auto|scroll)/.test(getComputedStyle(pane).overflowY)) pane = pane.parentElement;
+      if (!pane || !menu.offsetHeight) return;
+      const rect = menu.getBoundingClientRect();
+      const scale = rect.height / menu.offsetHeight || 1;
+      const room = (pane.getBoundingClientRect().bottom - rect.top - 8) / scale;
+      if (menu.offsetHeight > room) {
+        menu.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
+        menu.style.overflowY = "auto";
+      }
     };
 
     if (!this._settingsDropdownOutsideBound) {
@@ -3769,6 +3789,15 @@ class DpsApp {
       (value) => {
         if (!value) return;
         this.applySettingsTheme(value, { persist: true });
+      },
+      {
+        decorateItem: (item, value) => {
+          const swatch = document.createElement("span");
+          swatch.className = "settingsThemeSwatch";
+          swatch.dataset.settingsTheme = value;
+          swatch.setAttribute("aria-hidden", "true");
+          item.prepend(swatch);
+        },
       }
     );
 

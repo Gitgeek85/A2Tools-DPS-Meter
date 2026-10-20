@@ -361,7 +361,18 @@
         "graphite": "Graphite",
         "violet": "Violet",
         "forest": "Forest",
-        "crimson": "Crimson"
+        "crimson": "Crimson",
+        "ocean": "Ocean",
+        "sapphire": "Sapphire",
+        "indigo": "Indigo",
+        "rose": "Rose",
+        "sunset": "Sunset",
+        "amber": "Amber",
+        "copper": "Copper",
+        "lime": "Lime",
+        "ice": "Ice",
+        "slate": "Slate",
+        "onyx": "Onyx"
       }
     },
     "textureOffset": "Offset textures",

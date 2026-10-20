@@ -356,7 +356,18 @@
         "graphite": "石墨",
         "violet": "紫罗兰",
         "forest": "森林",
-        "crimson": "深红"
+        "crimson": "深红",
+        "ocean": "海洋",
+        "sapphire": "蓝宝石",
+        "indigo": "靛蓝",
+        "rose": "玫瑰",
+        "sunset": "日落",
+        "amber": "琥珀",
+        "copper": "铜",
+        "lime": "青柠",
+        "ice": "冰",
+        "slate": "石板",
+        "onyx": "黑玛瑙"
       }
     },
     "textureOffset": "错开纹理",

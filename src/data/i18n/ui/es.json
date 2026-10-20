@@ -351,7 +351,18 @@
         "graphite": "Grafito",
         "violet": "Violeta",
         "forest": "Bosque",
-        "crimson": "Carmesí"
+        "crimson": "Carmesí",
+        "ocean": "Océano",
+        "sapphire": "Zafiro",
+        "indigo": "Índigo",
+        "rose": "Rosa",
+        "sunset": "Atardecer",
+        "amber": "Ámbar",
+        "copper": "Cobre",
+        "lime": "Lima",
+        "ice": "Hielo",
+        "slate": "Pizarra",
+        "onyx": "Ónix"
       }
     },
     "textureOffset": "Desplazar texturas",

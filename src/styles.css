@@ -6822,30 +6822,119 @@ html.settingsWindow {
   --settings-bg: #0a0e16;
   --settings-nav-bg: transparent;
 }
-html.settingsWindow[data-settings-theme="midnight"] {
+html.settingsWindow[data-settings-theme="midnight"],
+.settingsThemeSwatch[data-settings-theme="midnight"] {
   --settings-bg: #0b1322;
   --settings-nav-bg: #0e182b;
   --settings-accent: #22b8cf;
 }
-html.settingsWindow[data-settings-theme="graphite"] {
+html.settingsWindow[data-settings-theme="graphite"],
+.settingsThemeSwatch[data-settings-theme="graphite"] {
   --settings-bg: #141518;
   --settings-nav-bg: #191a1e;
   --settings-accent: #8f9bb3;
 }
-html.settingsWindow[data-settings-theme="violet"] {
+html.settingsWindow[data-settings-theme="violet"],
+.settingsThemeSwatch[data-settings-theme="violet"] {
   --settings-bg: #120d1c;
   --settings-nav-bg: #171126;
   --settings-accent: #9b6bff;
 }
-html.settingsWindow[data-settings-theme="forest"] {
+html.settingsWindow[data-settings-theme="forest"],
+.settingsThemeSwatch[data-settings-theme="forest"] {
   --settings-bg: #0b1511;
   --settings-nav-bg: #0f1c16;
   --settings-accent: #3fbf7f;
 }
-html.settingsWindow[data-settings-theme="crimson"] {
+html.settingsWindow[data-settings-theme="crimson"],
+.settingsThemeSwatch[data-settings-theme="crimson"] {
   --settings-bg: #170c0f;
   --settings-nav-bg: #1e1014;
   --settings-accent: #e5484d;
+}
+html.settingsWindow[data-settings-theme="ocean"],
+.settingsThemeSwatch[data-settings-theme="ocean"] {
+  --settings-bg: #071619;
+  --settings-nav-bg: #0a1e22;
+  --settings-accent: #14b8a6;
+}
+html.settingsWindow[data-settings-theme="sapphire"],
+.settingsThemeSwatch[data-settings-theme="sapphire"] {
+  --settings-bg: #0a0f24;
+  --settings-nav-bg: #0d1430;
+  --settings-accent: #3b6cf6;
+}
+html.settingsWindow[data-settings-theme="indigo"],
+.settingsThemeSwatch[data-settings-theme="indigo"] {
+  --settings-bg: #0e0d22;
+  --settings-nav-bg: #13112d;
+  --settings-accent: #6366f1;
+}
+html.settingsWindow[data-settings-theme="rose"],
+.settingsThemeSwatch[data-settings-theme="rose"] {
+  --settings-bg: #1a0d14;
+  --settings-nav-bg: #22111a;
+  --settings-accent: #ec4899;
+}
+html.settingsWindow[data-settings-theme="sunset"],
+.settingsThemeSwatch[data-settings-theme="sunset"] {
+  --settings-bg: #1a100a;
+  --settings-nav-bg: #22150d;
+  --settings-accent: #f97316;
+}
+html.settingsWindow[data-settings-theme="amber"],
+.settingsThemeSwatch[data-settings-theme="amber"] {
+  --settings-bg: #17120a;
+  --settings-nav-bg: #1e170d;
+  --settings-accent: #e0a526;
+}
+html.settingsWindow[data-settings-theme="copper"],
+.settingsThemeSwatch[data-settings-theme="copper"] {
+  --settings-bg: #160f0c;
+  --settings-nav-bg: #1d1410;
+  --settings-accent: #c8693a;
+}
+html.settingsWindow[data-settings-theme="lime"],
+.settingsThemeSwatch[data-settings-theme="lime"] {
+  --settings-bg: #0f140a;
+  --settings-nav-bg: #141a0d;
+  --settings-accent: #7cc416;
+}
+html.settingsWindow[data-settings-theme="ice"],
+.settingsThemeSwatch[data-settings-theme="ice"] {
+  --settings-bg: #0b1219;
+  --settings-nav-bg: #0f1822;
+  --settings-accent: #6cc4f0;
+}
+html.settingsWindow[data-settings-theme="slate"],
+.settingsThemeSwatch[data-settings-theme="slate"] {
+  --settings-bg: #0f141b;
+  --settings-nav-bg: #141b24;
+  --settings-accent: #71829b;
+}
+html.settingsWindow[data-settings-theme="onyx"],
+.settingsThemeSwatch[data-settings-theme="onyx"] {
+  --settings-bg: #000000;
+  --settings-nav-bg: #0b0b0c;
+  --settings-accent: #a1a1aa;
+}
+/* Each choice in the menu: a dot of its accent on its background. */
+.settingsThemeSwatch {
+  --settings-bg: #0a0e16;
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-right: 7px;
+  vertical-align: -2px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 4px solid var(--settings-bg);
+  background: var(--settings-accent, var(--isUser-fill));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+.settingsThemeSwatch[data-settings-theme="meter"] {
+  --settings-accent: var(--isUser-fill);
 }
 html.settingsWindow .settingsNav {
   background: var(--settings-nav-bg);

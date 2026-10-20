@@ -356,7 +356,18 @@
         "graphite": "그래파이트",
         "violet": "바이올렛",
         "forest": "포레스트",
-        "crimson": "크림슨"
+        "crimson": "크림슨",
+        "ocean": "오션",
+        "sapphire": "사파이어",
+        "indigo": "인디고",
+        "rose": "로즈",
+        "sunset": "선셋",
+        "amber": "앰버",
+        "copper": "코퍼",
+        "lime": "라임",
+        "ice": "아이스",
+        "slate": "슬레이트",
+        "onyx": "오닉스"
       }
     },
     "textureOffset": "질감 위치 다르게",

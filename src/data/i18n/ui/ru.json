@@ -356,7 +356,18 @@
         "graphite": "Графит",
         "violet": "Фиолетовый",
         "forest": "Лес",
-        "crimson": "Багровый"
+        "crimson": "Багровый",
+        "ocean": "Океан",
+        "sapphire": "Сапфир",
+        "indigo": "Индиго",
+        "rose": "Роза",
+        "sunset": "Закат",
+        "amber": "Янтарь",
+        "copper": "Медь",
+        "lime": "Лайм",
+        "ice": "Лёд",
+        "slate": "Сланец",
+        "onyx": "Оникс"
       }
     },
     "textureOffset": "Сдвигать текстуры",

@@ -351,7 +351,18 @@
         "graphite": "グラファイト",
         "violet": "バイオレット",
         "forest": "フォレスト",
-        "crimson": "クリムゾン"
+        "crimson": "クリムゾン",
+        "ocean": "オーシャン",
+        "sapphire": "サファイア",
+        "indigo": "インディゴ",
+        "rose": "ローズ",
+        "sunset": "サンセット",
+        "amber": "アンバー",
+        "copper": "カッパー",
+        "lime": "ライム",
+        "ice": "アイス",
+        "slate": "スレート",
+        "onyx": "オニキス"
       }
     },
     "textureOffset": "テクスチャをずらす",
