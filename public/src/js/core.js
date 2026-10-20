@@ -251,6 +251,7 @@ class DpsApp {
     this.hoverTooltipPositionRaf = 0;
     this.hoverTooltipGeometryKey = "";
     this.hoverTooltipDismissed = true;
+    this.hoverPointerWatch = 0;
 
     DpsApp.instance = this;
   }
@@ -901,6 +902,10 @@ class DpsApp {
 
   hideHoverTooltip() {
     this.hoverTooltipDismissed = true;
+    if (this.hoverPointerWatch) {
+      clearInterval(this.hoverPointerWatch);
+      this.hoverPointerWatch = 0;
+    }
     if (this.hoverTooltipPositionRaf) {
       cancelAnimationFrame(this.hoverTooltipPositionRaf);
       this.hoverTooltipPositionRaf = 0;
@@ -1029,6 +1034,32 @@ class DpsApp {
     this.hoverTooltipEl.classList.add("isVisible");
     this.hoverTooltipEl.setAttribute("aria-hidden", "false");
     this.scheduleHoverTooltipPosition();
+    this.watchHoverPointer();
+  }
+
+  // A row can miss its mouse-leave: the game takes the pointer while it is
+  // over the meter, or the window stops taking the mouse under it. The
+  // tooltip then stayed up until the row was hovered and left again. While
+  // it shows, ask where the pointer really is and close it once it is off
+  // the row. Where the pointer can't be read (native Wayland) nothing changes.
+  watchHoverPointer() {
+    if (this.hoverPointerWatch || !window.javaBridge?.pointerInWindow) return;
+    this.hoverPointerWatch = setInterval(async () => {
+      const rowId = this.hoveredDetailsRowId;
+      const at = await window.javaBridge.pointerInWindow();
+      if (!this.hoverPointerWatch) return;
+      if (!at) {
+        clearInterval(this.hoverPointerWatch);
+        this.hoverPointerWatch = 0;
+        return;
+      }
+      // Hovering moved on while asking: the next check sees the new row.
+      if (rowId !== this.hoveredDetailsRowId) return;
+      const over = document.elementFromPoint(at.x, at.y)?.closest?.(".item");
+      if (rowId && Number(over?.dataset?.rowId) === rowId) return;
+      this.hoveredDetailsRowId = null;
+      this.hideHoverTooltip();
+    }, 300);
   }
 
   positionHoverTooltip(rowEl = null) {
