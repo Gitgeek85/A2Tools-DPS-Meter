@@ -342,6 +342,18 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Couleurs des paramètres",
+      "tip": "Les couleurs de cette fenêtre de paramètres. Le compteur garde son propre thème.",
+      "options": {
+        "meter": "Thème du compteur",
+        "midnight": "Minuit",
+        "graphite": "Graphite",
+        "violet": "Violet",
+        "forest": "Forêt",
+        "crimson": "Cramoisi"
+      }
+    },
     "textureOffset": "Décaler les textures",
     "barTexture": {
       "label": "Texture des barres",

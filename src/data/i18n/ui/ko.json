@@ -347,6 +347,18 @@
         "varian": "바리안"
       }
     },
+    "settingsTheme": {
+      "label": "설정 창 색상",
+      "tip": "이 설정 창의 색상입니다. 미터는 자체 테마를 유지합니다.",
+      "options": {
+        "meter": "미터 테마",
+        "midnight": "미드나이트",
+        "graphite": "그래파이트",
+        "violet": "바이올렛",
+        "forest": "포레스트",
+        "crimson": "크림슨"
+      }
+    },
     "textureOffset": "질감 위치 다르게",
     "barTexture": {
       "label": "막대 질감",

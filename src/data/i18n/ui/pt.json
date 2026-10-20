@@ -342,6 +342,18 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Cores das configurações",
+      "tip": "As cores desta janela de configurações. O medidor mantém o próprio tema.",
+      "options": {
+        "meter": "Tema do medidor",
+        "midnight": "Meia-noite",
+        "graphite": "Grafite",
+        "violet": "Violeta",
+        "forest": "Floresta",
+        "crimson": "Carmesim"
+      }
+    },
     "textureOffset": "Deslocar texturas",
     "barTexture": {
       "label": "Textura das barras",

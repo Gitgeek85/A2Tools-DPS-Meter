@@ -347,6 +347,18 @@
         "varian": "瓦里安"
       }
     },
+    "settingsTheme": {
+      "label": "设置窗口颜色",
+      "tip": "此设置窗口的颜色。计量器保留自己的主题。",
+      "options": {
+        "meter": "计量器主题",
+        "midnight": "午夜",
+        "graphite": "石墨",
+        "violet": "紫罗兰",
+        "forest": "森林",
+        "crimson": "深红"
+      }
+    },
     "textureOffset": "错开纹理",
     "barTexture": {
       "label": "条形纹理",

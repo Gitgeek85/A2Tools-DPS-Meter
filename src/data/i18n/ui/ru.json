@@ -347,6 +347,18 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Цвета настроек",
+      "tip": "Цвета этого окна настроек. Метр сохраняет свою тему.",
+      "options": {
+        "meter": "Тема метра",
+        "midnight": "Полночь",
+        "graphite": "Графит",
+        "violet": "Фиолетовый",
+        "forest": "Лес",
+        "crimson": "Багровый"
+      }
+    },
     "textureOffset": "Сдвигать текстуры",
     "barTexture": {
       "label": "Текстура полос",

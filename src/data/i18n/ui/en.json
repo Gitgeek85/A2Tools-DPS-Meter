@@ -352,6 +352,18 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Settings colours",
+      "tip": "The colours of this Settings window. The meter keeps its own theme.",
+      "options": {
+        "meter": "Meter theme",
+        "midnight": "Midnight",
+        "graphite": "Graphite",
+        "violet": "Violet",
+        "forest": "Forest",
+        "crimson": "Crimson"
+      }
+    },
     "textureOffset": "Offset textures",
     "barTexture": {
       "label": "Bar texture",

@@ -1588,7 +1588,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
   width: 15px;
   height: 15px;
   stroke-width: 2;
-  color: var(--isUser-fill);
+  color: var(--settings-accent, var(--isUser-fill));
   opacity: 0.9;
 }
 .settingsPanel .settingsNavItem.isActive svg { color: inherit; opacity: 1; }
@@ -1613,11 +1613,11 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--isUser-fill);
+  background: var(--settings-accent, var(--isUser-fill));
   opacity: 0.62;
 }
 .settingsPanel .settingsNavItem:focus-visible {
-  outline: 2px solid var(--isUser-fill);
+  outline: 2px solid var(--settings-accent, var(--isUser-fill));
   outline-offset: -2px;
 }
 .settingsPanel .settingsNavItem { isolation: isolate; }
@@ -1857,7 +1857,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
 .settingsPanel .characterNameInput:focus,
 .settingsPanel .localActorIdInput:focus {
   outline: none;
-  border-color: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
 }
 .settingsPanel .characterNameInput::placeholder,
 .settingsPanel .localActorIdInput::placeholder {
@@ -1897,7 +1897,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
 .settingsPanel .streamOverlayNameInput:focus,
 .settingsPanel .streamOverlayUrlInput:focus {
   outline: none;
-  border-color: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
 }
 .settingsPanel .streamOverlayPortInput.isInvalid {
   border-color: var(--error-fill);
@@ -1976,7 +1976,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
   width: 12px;
   height: 12px;
   margin: 0;
-  accent-color: var(--isUser-fill);
+  accent-color: var(--settings-accent, var(--isUser-fill));
   cursor: pointer;
 }
 .settingsPanel .deviceDropdownWrapper {
@@ -2023,7 +2023,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
 .settingsPanel .keybindBtn:focus-visible,
 .settingsPanel .settingsAction:focus-visible,
 .settingsPanel .settingsRange:focus-visible {
-  outline: 2px solid var(--isUser-fill);
+  outline: 2px solid var(--settings-accent, var(--isUser-fill));
   outline-offset: 1px;
 }
 
@@ -2131,7 +2131,7 @@ body.mainPlayerNamesBold .settingsPanel .themeDropdownMenu .settingsDropdownItem
 }
 .settingsPanel .keybindBtn.recording {
   color: #fff;
-  border-color: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
   background: rgba(255, 255, 255, 0.12);
   animation: keybindPulse 1s ease-in-out infinite;
 }
@@ -2186,7 +2186,7 @@ body.mainPlayerNamesBold .settingsPanel .themeDropdownMenu .settingsDropdownItem
   border-radius: 2px;
   background: linear-gradient(
     to right,
-    var(--isUser-fill) 0 var(--range-pct, 50%),
+    var(--settings-accent, var(--isUser-fill)) 0 var(--range-pct, 50%),
     rgba(255, 255, 255, 0.14) var(--range-pct, 50%) 100%
   );
 }
@@ -2252,15 +2252,15 @@ body.mainPlayerNamesBold .settingsPanel .themeDropdownMenu .settingsDropdownItem
   transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), background 120ms ease;
 }
 .settingsPanel .settingsToggleControl input[type="checkbox"]:checked + .settingsToggleTrack {
-  background: var(--isUser-fill);
-  border-color: var(--isUser-fill);
+  background: var(--settings-accent, var(--isUser-fill));
+  border-color: var(--settings-accent, var(--isUser-fill));
 }
 .settingsPanel .settingsToggleControl input[type="checkbox"]:checked + .settingsToggleTrack::after {
   transform: translateX(13px);
   background: #fff;
 }
 .settingsPanel .settingsToggleControl input[type="checkbox"]:focus-visible + .settingsToggleTrack {
-  outline: 2px solid var(--isUser-fill);
+  outline: 2px solid var(--settings-accent, var(--isUser-fill));
   outline-offset: 2px;
 }
 
@@ -6813,12 +6813,50 @@ html.detailsWindow .detailsMonitorBadge.isVisible {
    was left.
    ============================================================ */
 
+/* Settings colours (Appearance → Settings colours): the window's
+   background, the section list's, and the accent of its switches, buttons
+   and selected section (--settings-accent, used in place of the meter
+   theme's --isUser-fill, which the Appearance preview keeps). "meter" is the
+   window as it always was, its accent the meter theme's own. All of them dark: the panel's text is white. */
+html.settingsWindow {
+  --settings-bg: #0a0e16;
+  --settings-nav-bg: transparent;
+}
+html.settingsWindow[data-settings-theme="midnight"] {
+  --settings-bg: #0b1322;
+  --settings-nav-bg: #0e182b;
+  --settings-accent: #22b8cf;
+}
+html.settingsWindow[data-settings-theme="graphite"] {
+  --settings-bg: #141518;
+  --settings-nav-bg: #191a1e;
+  --settings-accent: #8f9bb3;
+}
+html.settingsWindow[data-settings-theme="violet"] {
+  --settings-bg: #120d1c;
+  --settings-nav-bg: #171126;
+  --settings-accent: #9b6bff;
+}
+html.settingsWindow[data-settings-theme="forest"] {
+  --settings-bg: #0b1511;
+  --settings-nav-bg: #0f1c16;
+  --settings-accent: #3fbf7f;
+}
+html.settingsWindow[data-settings-theme="crimson"] {
+  --settings-bg: #170c0f;
+  --settings-nav-bg: #1e1014;
+  --settings-accent: #e5484d;
+}
+html.settingsWindow .settingsNav {
+  background: var(--settings-nav-bg);
+}
+
 html.settingsWindow,
 html.settingsWindow body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0a0e16;
+  background: var(--settings-bg);
 }
 
 html.settingsWindow .container,
@@ -6862,7 +6900,7 @@ html.settingsWindow .settingsPanel {
   height: 100%;
   border: 0;
   border-radius: 0;
-  background: #0a0e16;
+  background: var(--settings-bg);
   overflow: hidden;
   --set-nav-w: 204px;
 }
@@ -6884,7 +6922,7 @@ html.settingsWindow .settingsFooter {
    see tauriBridge.js; not -webkit-app-region, which froze the app). */
 html.settingsWindow .settingsHeader {
   flex: 0 0 auto;
-  background: #0a0e16;
+  background: var(--settings-bg);
 }
 
 /* ============================================================
@@ -7822,8 +7860,8 @@ html.a2-offline .historyUploadBtn {
   padding: 0 14px;
 }
 .settingsPanel .hotkeyConsentConfirm {
-  border-color: var(--isUser-fill);
-  background: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
+  background: var(--settings-accent, var(--isUser-fill));
   color: #fff;
 }
 
@@ -7888,8 +7926,7 @@ html.a2-offline .historyUploadBtn {
 }
 /* A plugin the last update check changed: a green arrow by its version. */
 .settingsPanel .pluginUpdated {
-  box-shadow: inset 2px 0 0 #4ade80;
-  padding-left: 8px;
+  box-shadow: inset 3px 0 0 #4ade80;
 }
 .settingsPanel .pluginUpdatedIcon,
 .settingsPanel .pluginUpdated svg {
@@ -7908,6 +7945,83 @@ html.a2-offline .historyUploadBtn {
 }
 .settingsPanel .pluginOff .settingsInfo {
   opacity: 0.5;
+}
+
+/* Each plugin is a card of its own: name, version and switch on top, its
+   description under them, its options and buttons in a footer. */
+.settingsPanel .pluginList,
+.settingsPanel .pluginCatalog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.settingsPanel .pluginList[hidden] {
+  display: none;
+}
+.settingsPanel .pluginItem {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  overflow: hidden;
+}
+.settingsPanel .pluginItem:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.settingsPanel .pluginTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 12px 8px;
+}
+.settingsPanel .pluginTop .settingsInfo {
+  flex: 1;
+  min-width: 0;
+}
+.settingsPanel .pluginTop .settingsLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font-size: 13.5px;
+  font-variation-settings: "wght" 600, "wdth" 87.5;
+  color: #fff;
+}
+.settingsPanel .pluginTop .settingsHint {
+  margin-top: 3px;
+}
+.settingsPanel .pluginVersion {
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-variation-settings: "wght" 450, "wdth" 87.5;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.07);
+}
+.settingsPanel .pluginTop .pluginEnabledToggle {
+  flex: none;
+  margin: 1px 0 0;
+}
+.settingsPanel .pluginFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 6px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+}
+.settingsPanel .pluginButtons {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.settingsPanel .pluginFoot .pluginHideClosed {
+  margin-top: 0;
+}
+.settingsPanel .pluginItem.pluginOff {
+  background: transparent;
 }
 
 /* Why a key is framed red, under its label. */
