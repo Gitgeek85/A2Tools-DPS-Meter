@@ -28,8 +28,9 @@ pub const WINDOW_CLASS_MATCH: &str = "^[aA]2tools-dps-meter$";
 /// The rule, as (key, value) pairs in its group: the overlay only (class and
 /// exact title). It matched every window of the meter's by class, and a
 /// forced Keep Above can't be unticked, so Settings, Battle History and
-/// plugin windows were stuck above everything (#90). Plugins' icons get the
-/// same through their own rule (`icons_rule_entries`).
+/// plugin windows were stuck above everything (#90). Plugins' icons and
+/// windows get the same through their own rules (`icons_rule_entries`,
+/// `plugin_windows_rule_entries`).
 pub fn rule_entries() -> Vec<(&'static str, &'static str)> {
     vec![
         ("Description", "A2Tools DPS Meter above fullscreen games (added by the meter)"),
@@ -94,6 +95,33 @@ pub fn icons_rule_entries() -> Vec<(&'static str, &'static str)> {
         ("titlematch", "2"),
         ("acceptfocus", "false"),
         ("acceptfocusrule", "2"),
+        ("layer", "overlay"),
+        ("layerrule", "2"),
+        ("above", "true"),
+        ("aboverule", "2"),
+    ]
+}
+
+/// The fourth rule's group: plugin windows above a fullscreen game. Since
+/// #90 they were Keep Above only, which a focused fullscreen game covers, so
+/// a plugin's alert window (a party member's low HP, a mantra off) opened
+/// behind the game on its monitor. Each plugin window has its own hide or
+/// close button; Settings, Battle History and Details stay normal windows.
+pub const PLUGIN_WINDOWS_GROUP: &str = "a2tools-dps-meter-plugins";
+
+/// The plugin windows' rule: the meter's windows whose title ends with
+/// " (plugin)" (`titlematch` 3, a regular expression), as plugin windows are
+/// titled `"<plugin> (plugin)"` (plugins::open_window) and no other window of
+/// the meter's is. Forced to the overlay layer and Keep Above like the
+/// overlay. They keep taking focus, so a plugin's search box can be typed in.
+pub fn plugin_windows_rule_entries() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("Description", "A2Tools DPS Meter plugin windows above fullscreen games (added by the meter)"),
+        ("wmclass", WINDOW_CLASS_MATCH),
+        ("wmclassmatch", "3"),
+        ("wmclasscomplete", "false"),
+        ("title", " \\(plugin\\)$"),
+        ("titlematch", "3"),
         ("layer", "overlay"),
         ("layerrule", "2"),
         ("above", "true"),
@@ -231,6 +259,17 @@ mod tests {
         assert_eq!(value("title"), Some(" · "));
         assert_eq!(value("titlematch"), Some("2"));
         assert_eq!((value("acceptfocus"), value("acceptfocusrule")), (Some("false"), Some("2")));
+        assert_eq!(value("wmclass"), Some(WINDOW_CLASS_MATCH));
+    }
+
+    #[test]
+    fn the_plugin_windows_rule_matches_titles_ending_in_plugin() {
+        let rule = plugin_windows_rule_entries();
+        let value = |k: &str| rule.iter().find(|(key, _)| *key == k).map(|(_, v)| *v);
+        assert_eq!(value("title"), Some(" \\(plugin\\)$"));
+        assert_eq!(value("titlematch"), Some("3"));
+        assert_eq!((value("layer"), value("layerrule")), (Some("overlay"), Some("2")));
+        assert_eq!(value("acceptfocus"), None);
         assert_eq!(value("wmclass"), Some(WINDOW_CLASS_MATCH));
     }
 

@@ -16,5 +16,10 @@ pub fn icons_without_focus(_done: bool) -> Result<bool, String> {
     Ok(true)
 }
 
+/// See the Linux implementation. Always done.
+pub fn plugin_windows_above(_done: bool) -> Result<bool, String> {
+    Ok(true)
+}
+
 /// See the Linux implementation. Nothing to keep.
 pub fn keep_rules() {}
