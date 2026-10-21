@@ -8,7 +8,7 @@
 //! the game (#33, and a CachyOS player on Discord, 2026-10-08). Forcing the
 //! meter's layer to Overlay puts it above. Keys and values are KWin's own
 //! (src/rulesettings.kcfg): `layerrule`/`aboverule` 2 is Force, `wmclassmatch`
-//! 1 is an exact match.
+//! 1 is an exact match and 3 a regular expression, `titlematch` the same.
 
 /// The rule's group in `kwinrulesrc`. Fixed, so the meter can tell its own
 /// rule from the player's and never adds it twice.
@@ -16,6 +16,14 @@ pub const GROUP: &str = "a2tools-dps-meter-overlay";
 
 /// The window class the meter's windows carry.
 pub const WINDOW_CLASS: &str = "a2tools-dps-meter";
+
+/// The rules' class, as a regular expression (`wmclassmatch` 3). KWin
+/// compares the class as written: a native Wayland window's is
+/// `a2tools-dps-meter`, but under XWayland (`GDK_BACKEND=x11`) GTK capitalises
+/// it, `A2tools-dps-meter`, and an exact `a2tools-dps-meter` missed it. Since
+/// the rule also needs the title (#90) nothing else put the overlay above, so
+/// it went behind a fullscreen game.
+pub const WINDOW_CLASS_MATCH: &str = "^[aA]2tools-dps-meter$";
 
 /// The rule, as (key, value) pairs in its group: the overlay only (class and
 /// exact title). It matched every window of the meter's by class, and a
@@ -25,8 +33,8 @@ pub const WINDOW_CLASS: &str = "a2tools-dps-meter";
 pub fn rule_entries() -> Vec<(&'static str, &'static str)> {
     vec![
         ("Description", "A2Tools DPS Meter above fullscreen games (added by the meter)"),
-        ("wmclass", WINDOW_CLASS),
-        ("wmclassmatch", "1"),
+        ("wmclass", WINDOW_CLASS_MATCH),
+        ("wmclassmatch", "3"),
         ("wmclasscomplete", "false"),
         ("title", OVERLAY_TITLE),
         ("titlematch", "1"),
@@ -53,8 +61,8 @@ pub const OVERLAY_TITLE: &str = "A2Tools DPS Meter";
 pub fn no_focus_rule_entries() -> Vec<(&'static str, &'static str)> {
     vec![
         ("Description", "A2Tools DPS Meter overlay keeps focus on the game (added by the meter)"),
-        ("wmclass", WINDOW_CLASS),
-        ("wmclassmatch", "1"),
+        ("wmclass", WINDOW_CLASS_MATCH),
+        ("wmclassmatch", "3"),
         ("wmclasscomplete", "false"),
         ("title", OVERLAY_TITLE),
         ("titlematch", "1"),
@@ -79,8 +87,8 @@ pub const ICON_TITLE_MARK: &str = " · ";
 pub fn icons_rule_entries() -> Vec<(&'static str, &'static str)> {
     vec![
         ("Description", "A2Tools DPS Meter plugin icons keep focus on the game (added by the meter)"),
-        ("wmclass", WINDOW_CLASS),
-        ("wmclassmatch", "1"),
+        ("wmclass", WINDOW_CLASS_MATCH),
+        ("wmclassmatch", "3"),
         ("wmclasscomplete", "false"),
         ("title", ICON_TITLE_MARK),
         ("titlematch", "2"),
@@ -195,8 +203,8 @@ mod tests {
         let value = |k: &str| rule.iter().find(|(key, _)| *key == k).map(|(_, v)| *v);
         assert_eq!(value("layer"), Some("overlay"));
         assert_eq!(value("layerrule"), Some("2"));
-        assert_eq!(value("wmclass"), Some("a2tools-dps-meter"));
-        assert_eq!(value("wmclassmatch"), Some("1"));
+        assert_eq!(value("wmclass"), Some(WINDOW_CLASS_MATCH));
+        assert_eq!(value("wmclassmatch"), Some("3"));
     }
 
     /// #71: the overlay takes no focus, so a click on it leaves the game
@@ -223,7 +231,7 @@ mod tests {
         assert_eq!(value("title"), Some(" · "));
         assert_eq!(value("titlematch"), Some("2"));
         assert_eq!((value("acceptfocus"), value("acceptfocusrule")), (Some("false"), Some("2")));
-        assert_eq!(value("wmclass"), Some(WINDOW_CLASS));
+        assert_eq!(value("wmclass"), Some(WINDOW_CLASS_MATCH));
     }
 
     /// KWin reads `rules`: a list left only in `Order` (as 2.0.73 left it)
