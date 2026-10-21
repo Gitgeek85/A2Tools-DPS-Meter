@@ -149,14 +149,30 @@ pub struct Places {
 
 static PLACES: OnceLock<Places> = OnceLock::new();
 
+/// The meter runs on X11 (`GDK_BACKEND=x11`, XWayland) in a Wayland session.
+/// It places and remembers its own windows then, but KWin keeps a new X11
+/// window inside the X11 work area: one rectangle for every monitor, its
+/// bottom the top of the lowest panel on any of them. So a widget left below
+/// that line on another monitor came back above it at each start (Ping on a
+/// 1440 px monitor, a panel on a 1080 px one: back at the 1232 line). KWin
+/// places only widgets then, where the meter left them (`load`).
+static X11_IN_WAYLAND: AtomicBool = AtomicBool::new(false);
+
 /// Keep the meter's windows where they were left, through KWin (#76). Only
-/// on Wayland: under X11 the meter places its own windows, as on Windows.
+/// in a Wayland session: under X11 the meter places its own windows, as on
+/// Windows (in a Wayland session too, but for its widgets: X11_IN_WAYLAND).
 pub fn keep_places(places: Places) {
-    let wayland = std::env::var_os("WAYLAND_DISPLAY").is_some()
-        && std::env::var("GDK_BACKEND").map_or(true, |b| !b.starts_with("x11"));
-    if wayland {
+    if std::env::var_os("WAYLAND_DISPLAY").is_some() {
+        let x11 = std::env::var("GDK_BACKEND").is_ok_and(|b| b.starts_with("x11"));
+        X11_IN_WAYLAND.store(x11, Ordering::Relaxed);
         let _ = PLACES.set(places);
     }
+}
+
+/// Whether the meter places and remembers its own windows, KWin placing only
+/// its widgets (see X11_IN_WAYLAND).
+pub fn places_own_windows() -> bool {
+    X11_IN_WAYLAND.load(Ordering::Relaxed)
 }
 
 /// 0: not known (no report yet, or not KDE). 1: the game or one of the
@@ -232,6 +248,10 @@ impl Focus {
 
     /// One of the meter's windows was moved or resized by the player.
     fn geometry(&self, caption: String, x: String, y: String, width: String, height: String) {
+        // On X11 the meter saves its own windows' places as they move.
+        if places_own_windows() {
+            return;
+        }
         let Some(places) = PLACES.get() else { return };
         let n = |v: &str| v.trim().parse::<i32>().ok();
         if let (Some(x), Some(y), Some(w), Some(h)) = (n(&x), n(&y), n(&width), n(&height))

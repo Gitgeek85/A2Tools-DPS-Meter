@@ -262,6 +262,13 @@ fn save_window_place(app: &tauri::AppHandle, title: &str, (x, y, w, h): (i32, i3
 /// overlay sizes itself to its content, so it gets its place only.
 fn load_window_place(app: &tauri::AppHandle, title: &str) -> Option<(i32, i32, i32, i32)> {
     let label = window_titled(app, title)?;
+    // On X11 the meter places its windows itself; KWin puts back only a
+    // widget, where the meter saved it, as KWin may not let it go there
+    // (platform::linux::focus, X11_IN_WAYLAND).
+    if platform::window::places_own_windows() {
+        let (id, name) = crate::plugins::widgets::parse_label(&label)?;
+        return crate::plugins::widgets::saved_place(app, &id, &name).map(|(x, y)| (x, y, 0, 0));
+    }
     let state = app.try_state::<AppState>()?;
     let placed = |label: &str| {
         let value = state.settings.get(&format!("window.{label}.placed"))?;

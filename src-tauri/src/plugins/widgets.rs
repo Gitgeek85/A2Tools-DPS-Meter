@@ -112,7 +112,7 @@ fn fronts() -> &'static Mutex<HashMap<String, Option<isize>>> {
     FRONTS.get_or_init(Mutex::default)
 }
 
-fn saved_place(app: &tauri::AppHandle, id: &str, name: &str) -> Option<(i32, i32)> {
+pub fn saved_place(app: &tauri::AppHandle, id: &str, name: &str) -> Option<(i32, i32)> {
     let value = app.try_state::<AppState>()?.settings.get(&place_key(id, name))?;
     let (x, y) = value.split_once(',')?;
     Some((x.trim().parse().ok()?, y.trim().parse().ok()?))
@@ -136,7 +136,7 @@ pub async fn plugin_widget_open(
     let size = |v: f64| if v.is_finite() { v.clamp(24.0, 800.0) } else { 64.0 };
     let (width, height) = (size(width), size(height));
     if let Some(widget) = app.get_webview_window(&label(&id, &name)) {
-        let _ = widget.set_size(tauri::LogicalSize::new(width, height));
+        crate::platform::window::set_size(&widget, tauri::LogicalSize::new(width, height).into());
         if super::game_hides(&app, &id) {
             super::hold_for_game(&widget);
         } else if !crate::platform::window::reveal_in_place(&widget) {
@@ -167,7 +167,14 @@ pub async fn plugin_widget_open(
         .shadow(false)
         .always_on_top(true)
         .skip_taskbar(true)
-        .resizable(false)
+        // Resizable, its size then pinned (set_size below), as the meter's
+        // other windows are: GTK sizes a window that isn't resizable to what
+        // the page asks for, at least 200 x 200, so a 118 x 38 widget had a
+        // 200 x 200 window. Dropped near a screen's bottom edge, that window
+        // reached past it, and KWin moved it back up each time it opened
+        // (Ping, 2026-10-20: left at y 1316, back at 1032). Windows sizes it
+        // as asked either way.
+        .resizable(cfg!(target_os = "linux"))
         .focused(false)
         // Never takes focus, from the start: clicks and drags still reach it.
         // Focusable, tao turns a GTK window's focus back on after its first
@@ -180,6 +187,7 @@ pub async fn plugin_widget_open(
     // Never in front of the game: an alert icon appearing must not tab the
     // player out of it.
     crate::platform::window::never_activate(&widget, front);
+    crate::platform::window::set_size(&widget, tauri::LogicalSize::new(width, height).into());
     fronts().lock().unwrap_or_else(|p| p.into_inner()).insert(widget.label().to_string(), front);
     // Where it was left; a widget never moved goes beside the plugin's others
     // rather than wherever the window manager puts a new window (the middle
