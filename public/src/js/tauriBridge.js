@@ -783,6 +783,14 @@
     overlayLockSupported() {
       return invoke("overlay_lock_supported").catch(() => false);
     },
+    // The pointer in this window, in CSS pixels, or null where it can't be
+    // read (a native Wayland window).
+    async pointerInWindow() {
+      const at = await invoke("pointer_in_window").catch(() => null);
+      if (!Array.isArray(at)) return null;
+      const scale = window.devicePixelRatio || 1;
+      return { x: at[0] / scale, y: at[1] / scale };
+    },
     setOverlayLocked(locked) {
       invoke("set_overlay_locked", { locked: !!locked }).catch(() => {});
     },

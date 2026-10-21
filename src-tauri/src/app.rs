@@ -1310,6 +1310,17 @@ fn overlay_lock_supported() -> bool {
     platform::window::cursor_position().is_some()
 }
 
+/// Where the mouse pointer is from the calling window's top-left, in screen
+/// pixels, or `None` where it can't be read (a native Wayland window). The
+/// hover tooltip checks it: a row can miss its mouse-leave (the game takes
+/// the pointer while it is over the meter), and the tooltip then stayed up.
+#[tauri::command]
+fn pointer_in_window(window: tauri::WebviewWindow) -> Option<(i32, i32)> {
+    let (px, py) = platform::window::cursor_position()?;
+    let origin = window.inner_position().ok()?;
+    Some((px - origin.x, py - origin.y))
+}
+
 #[tauri::command]
 fn set_overlay_locked(app: tauri::AppHandle, locked: bool) {
     apply_overlay_lock(&app, locked);
@@ -3846,6 +3857,7 @@ pub fn run() {
             log_from_ui,
             suspend_capture,
             overlay_lock_supported,
+            pointer_in_window,
             set_overlay_locked,
             set_overlay_card_open,
             is_overlay_locked,
