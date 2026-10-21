@@ -114,12 +114,27 @@
       return i;
     };
 
-    // A square with the plugin's first letter, its colour from its id, so
-    // a long list scans by shape and colour before reading.
+    // The reviewed plugins' icons (Lucide), by id. Any other plugin shows its
+    // first letter.
+    const OFFICIAL_ICONS = {
+      "pet-souls": "paw-print",
+      "event-timers": "alarm-clock",
+      ping: "activity",
+      cooldowns: "hourglass",
+      checklist: "list-checks",
+      "heal-alert": "heart-pulse",
+      "mantra-watch": "orbit",
+      "hidden-cubes": "box",
+    };
+
+    // A square with the plugin's icon or first letter, its colour from its
+    // id, so a long list scans by shape and colour before reading.
     const mark = (id, name) => {
       let hash = 0;
       for (const ch of String(id)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-      const m = el("span", "pluginMark", (String(name || id).trim()[0] || "?").toUpperCase());
+      const glyph = OFFICIAL_ICONS[id];
+      const m = el("span", "pluginMark", glyph ? null : (String(name || id).trim()[0] || "?").toUpperCase());
+      if (glyph) m.append(icon(glyph));
       m.style.setProperty("--mark-hue", String(hash % 360));
       m.setAttribute("aria-hidden", "true");
       return m;

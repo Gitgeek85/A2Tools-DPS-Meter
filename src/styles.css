@@ -8419,6 +8419,10 @@ html.a2-offline .historyUploadBtn {
   font-weight: 700;
   font-size: 14px;
 }
+.settingsPanel .pluginMark svg {
+  width: 16px;
+  height: 16px;
+}
 .settingsPanel .pluginMain {
   display: flex;
   flex-direction: column;
