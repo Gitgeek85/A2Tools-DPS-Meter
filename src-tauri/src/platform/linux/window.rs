@@ -161,8 +161,13 @@ fn query_pointer() -> Option<(i32, i32, u32)> {
 /// window, so the pointer watch the lock uses elsewhere lost it over the
 /// desktop or a native Wayland window and the button could not be clicked.
 /// An input region needs no pointer. Returns whether it was applied.
+///
+/// A window `hide_in_place` hid never takes the mouse, whatever asks: it is
+/// invisible but still there, and took every click over it once a screenshot
+/// tool left the front (`screenshot_tool` gives every window the mouse back).
 pub fn click_through_except(window: &tauri::WebviewWindow, ignore: bool, keep: Option<(f64, f64, f64, f64, f64)>) -> bool {
     use gtk::{cairo, prelude::*};
+    let (ignore, keep) = if is_hidden_in_place(window) { (true, None) } else { (ignore, keep) };
     let window = window.clone();
     super::dialog::on_gtk_thread(move || {
         let gtk_window = window.gtk_window().ok()?;
@@ -252,9 +257,9 @@ pub fn hide_in_place(window: &tauri::WebviewWindow) {
         hide_without_focus(window);
         return;
     }
-    let _ = window.set_ignore_cursor_events(true);
-    let _ = window.set_skip_taskbar(true);
     hidden_in_place().lock().unwrap_or_else(|p| p.into_inner()).insert(window.label().to_string());
+    click_through_except(window, true, None);
+    let _ = window.set_skip_taskbar(true);
 }
 
 /// Show a window `hide_in_place` hid, where it is; false if it was not hidden
@@ -264,7 +269,7 @@ pub fn reveal_in_place(window: &tauri::WebviewWindow) -> bool {
     if !was {
         return false;
     }
-    let _ = window.set_ignore_cursor_events(false);
+    click_through_except(window, false, None);
     let _ = window.set_skip_taskbar(false);
     let target = window.clone();
     super::dialog::on_gtk_thread(move || {

@@ -226,6 +226,7 @@ fn show_with_meter(app: &tauri::AppHandle, hidden: &mut std::collections::HashSe
         if !platform::window::reveal_in_place(&window) {
             platform::window::show_on_top_without_focus(&window);
         }
+        crate::plugins::widgets::relock(app, &window);
     }
 }
 
