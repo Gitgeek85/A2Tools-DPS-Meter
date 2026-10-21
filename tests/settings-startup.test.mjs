@@ -1068,7 +1068,7 @@ test('opening settings does not reapply the default target mode to an ongoing fi
     setUserName: (name, { syncBackend }) => { if (syncBackend) writes.push(['name', name]); },
     setDebugLogging: (value, { syncBackend }) => { if (syncBackend) writes.push(['debug', value]); },
     setOnlyShowUser() {}, setPinMeToTop() {}, setBetaUi() {}, setSlimMode() {},
-    setMainPlayerNamesBold() {}, setMainPlayerDpsBold() {}, applyTheme() {},
+    setMainPlayerNamesBold() {}, setMainPlayerDpsBold() {}, applyTheme() {}, applySettingsTheme() {},
   };
   const setupStart = core.indexOf('  setupSettingsPanel()');
   const initialization = core.slice(core.indexOf('    const syncBackend', setupStart),

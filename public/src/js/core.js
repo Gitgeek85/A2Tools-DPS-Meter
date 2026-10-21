@@ -11,6 +11,9 @@ const SETTING_CHOICES = {
   // The number after the level in the Discord activity (presence.rs).
   discordStat: { allowed: ["combatPower", "gearScore", "off"], fallback: "off" },
   // A pattern over the meter's bars: a supporter's perk (applyBarTexture).
+  // The Settings window's own colours (styles.css, data-settings-theme):
+  // "meter" keeps the meter theme's accent.
+  settingsTheme: { allowed: ["meter", "midnight", "graphite", "violet", "forest", "crimson", "ocean", "sapphire", "indigo", "rose", "sunset", "amber", "copper", "lime", "ice", "slate", "onyx"], fallback: "meter" },
   barTexture: { allowed: ["none", "flames", "crystal", "glacier", "feathers", "wing", "storm", "nebula", "galaxy", "aura"], fallback: "none" },
 };
 // Themes whose bars differ from one another show those colours in the theme
@@ -114,6 +117,7 @@ class DpsApp {
       playerLimit: "dpsMeter.playerLimit",
       theme: "dpsMeter.theme",
       slimMode: "dpsMeter.slimMode",
+      settingsTheme: "dpsMeter.settingsTheme",
       autoHideMeter: "dpsMeter.autoHideMeter",
       hideWhenGameClosed: "dpsMeter.hideWhenGameClosed",
       globalHotkeys: "dpsMeter.globalHotkeys",
@@ -2653,9 +2657,12 @@ class DpsApp {
     this.languageDropdownMenu = document.querySelector(".languageDropdownMenu");
     this.themeDropdownBtn = document.querySelector(".themeDropdownBtn");
     this.themeDropdownMenu = document.querySelector(".themeDropdownMenu");
+    this.settingsThemeDropdownBtn = document.querySelector(".settingsThemeDropdownBtn");
+    this.settingsThemeDropdownMenu = document.querySelector(".settingsThemeDropdownMenu");
     this.settingsSelections = {
       language: "en",
       theme: this.theme,
+      settingsTheme: "meter",
       defaultMeterMode: "bossTargets",
       allTargetsWindowMs: "120000",
       trainSelectionMode: "all",
@@ -2724,6 +2731,7 @@ class DpsApp {
       reason: "default meter mode setting",
     });
     this.applyTheme(storedTheme || this.theme, { persist: false });
+    this.applySettingsTheme(this.safeGetSetting(this.storageKeys.settingsTheme));
     if (storedLanguage && storedLanguage !== this.i18n?.getLanguage?.()) {
       this.i18n?.setLanguage?.(storedLanguage, { persist: false });
     }
@@ -3642,7 +3650,27 @@ class DpsApp {
         const wasOpen = menu.classList.contains("isOpen");
         closeAll();
         menu.classList.toggle("isOpen", !wasOpen);
+        if (!wasOpen) fitMenu(menu);
       };
+    };
+
+    // A long menu (the colour themes) ran past the bottom of the scrolling
+    // pane, under the Appearance preview: it ends there now and scrolls.
+    // The rects are in screen pixels and the panel is zoomed, so the room is
+    // scaled back to the menu's own pixels.
+    const fitMenu = (menu) => {
+      menu.style.maxHeight = "";
+      menu.style.overflowY = "";
+      let pane = menu.parentElement;
+      while (pane && !/(auto|scroll)/.test(getComputedStyle(pane).overflowY)) pane = pane.parentElement;
+      if (!pane || !menu.offsetHeight) return;
+      const rect = menu.getBoundingClientRect();
+      const scale = rect.height / menu.offsetHeight || 1;
+      const room = (pane.getBoundingClientRect().bottom - rect.top - 8) / scale;
+      if (menu.offsetHeight > room) {
+        menu.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
+        menu.style.overflowY = "auto";
+      }
     };
 
     if (!this._settingsDropdownOutsideBound) {
@@ -3748,6 +3776,30 @@ class DpsApp {
         this.settingsSelections.language = value;
         this.safeSetStorage(this.storageKeys.language, value);
         this.i18n?.setLanguage?.(value, { persist: true });
+      }
+    );
+
+    const settingsThemeOptions = SETTING_CHOICES.settingsTheme.allowed.map((value) => ({
+      value,
+      label: this.i18n?.t(`settings.settingsTheme.options.${value}`, value[0].toUpperCase() + value.slice(1)),
+    }));
+    setupDropdown(
+      this.settingsThemeDropdownBtn,
+      this.settingsThemeDropdownMenu,
+      settingsThemeOptions,
+      this.settingsSelections.settingsTheme,
+      (value) => {
+        if (!value) return;
+        this.applySettingsTheme(value, { persist: true });
+      },
+      {
+        decorateItem: (item, value) => {
+          const swatch = document.createElement("span");
+          swatch.className = "settingsThemeSwatch";
+          swatch.dataset.settingsTheme = value;
+          swatch.setAttribute("aria-hidden", "true");
+          item.prepend(swatch);
+        },
       }
     );
 
@@ -5173,6 +5225,15 @@ class DpsApp {
     if (persist) {
       this.safeSetSetting(this.storageKeys.theme, normalized);
     }
+  }
+
+  // The Settings window's colours, apart from the meter's theme.
+  applySettingsTheme(value, { persist = false } = {}) {
+    const normalized = pickSettingChoice("settingsTheme", value);
+    document.documentElement.dataset.settingsTheme = normalized;
+    if (this.settingsSelections) this.settingsSelections.settingsTheme = normalized;
+    this.syncSettingsDropdownSelection(this.settingsThemeDropdownBtn, this.settingsThemeDropdownMenu, normalized);
+    if (persist) this.safeSetSetting(this.storageKeys.settingsTheme, normalized);
   }
 
   setDisplayMode(mode, { persist = false } = {}) {

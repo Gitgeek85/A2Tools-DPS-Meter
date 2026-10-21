@@ -1588,7 +1588,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
   width: 15px;
   height: 15px;
   stroke-width: 2;
-  color: var(--isUser-fill);
+  color: var(--settings-accent, var(--isUser-fill));
   opacity: 0.9;
 }
 .settingsPanel .settingsNavItem.isActive svg { color: inherit; opacity: 1; }
@@ -1613,11 +1613,11 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--isUser-fill);
+  background: var(--settings-accent, var(--isUser-fill));
   opacity: 0.62;
 }
 .settingsPanel .settingsNavItem:focus-visible {
-  outline: 2px solid var(--isUser-fill);
+  outline: 2px solid var(--settings-accent, var(--isUser-fill));
   outline-offset: -2px;
 }
 .settingsPanel .settingsNavItem { isolation: isolate; }
@@ -1857,7 +1857,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
 .settingsPanel .characterNameInput:focus,
 .settingsPanel .localActorIdInput:focus {
   outline: none;
-  border-color: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
 }
 .settingsPanel .characterNameInput::placeholder,
 .settingsPanel .localActorIdInput::placeholder {
@@ -1897,7 +1897,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
 .settingsPanel .streamOverlayNameInput:focus,
 .settingsPanel .streamOverlayUrlInput:focus {
   outline: none;
-  border-color: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
 }
 .settingsPanel .streamOverlayPortInput.isInvalid {
   border-color: var(--error-fill);
@@ -1976,7 +1976,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
   width: 12px;
   height: 12px;
   margin: 0;
-  accent-color: var(--isUser-fill);
+  accent-color: var(--settings-accent, var(--isUser-fill));
   cursor: pointer;
 }
 .settingsPanel .deviceDropdownWrapper {
@@ -2023,7 +2023,7 @@ body.mainPlayerDpsBold :is(.meter, .barPreviewPanel) .item .content .dps > p {
 .settingsPanel .keybindBtn:focus-visible,
 .settingsPanel .settingsAction:focus-visible,
 .settingsPanel .settingsRange:focus-visible {
-  outline: 2px solid var(--isUser-fill);
+  outline: 2px solid var(--settings-accent, var(--isUser-fill));
   outline-offset: 1px;
 }
 
@@ -2131,7 +2131,7 @@ body.mainPlayerNamesBold .settingsPanel .themeDropdownMenu .settingsDropdownItem
 }
 .settingsPanel .keybindBtn.recording {
   color: #fff;
-  border-color: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
   background: rgba(255, 255, 255, 0.12);
   animation: keybindPulse 1s ease-in-out infinite;
 }
@@ -2186,7 +2186,7 @@ body.mainPlayerNamesBold .settingsPanel .themeDropdownMenu .settingsDropdownItem
   border-radius: 2px;
   background: linear-gradient(
     to right,
-    var(--isUser-fill) 0 var(--range-pct, 50%),
+    var(--settings-accent, var(--isUser-fill)) 0 var(--range-pct, 50%),
     rgba(255, 255, 255, 0.14) var(--range-pct, 50%) 100%
   );
 }
@@ -2252,15 +2252,15 @@ body.mainPlayerNamesBold .settingsPanel .themeDropdownMenu .settingsDropdownItem
   transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), background 120ms ease;
 }
 .settingsPanel .settingsToggleControl input[type="checkbox"]:checked + .settingsToggleTrack {
-  background: var(--isUser-fill);
-  border-color: var(--isUser-fill);
+  background: var(--settings-accent, var(--isUser-fill));
+  border-color: var(--settings-accent, var(--isUser-fill));
 }
 .settingsPanel .settingsToggleControl input[type="checkbox"]:checked + .settingsToggleTrack::after {
   transform: translateX(13px);
   background: #fff;
 }
 .settingsPanel .settingsToggleControl input[type="checkbox"]:focus-visible + .settingsToggleTrack {
-  outline: 2px solid var(--isUser-fill);
+  outline: 2px solid var(--settings-accent, var(--isUser-fill));
   outline-offset: 2px;
 }
 
@@ -6813,12 +6813,139 @@ html.detailsWindow .detailsMonitorBadge.isVisible {
    was left.
    ============================================================ */
 
+/* Settings colours (Appearance → Settings colours): the window's
+   background, the section list's, and the accent of its switches, buttons
+   and selected section (--settings-accent, used in place of the meter
+   theme's --isUser-fill, which the Appearance preview keeps). "meter" is the
+   window as it always was, its accent the meter theme's own. All of them dark: the panel's text is white. */
+html.settingsWindow {
+  --settings-bg: #0a0e16;
+  --settings-nav-bg: transparent;
+}
+html.settingsWindow[data-settings-theme="midnight"],
+.settingsThemeSwatch[data-settings-theme="midnight"] {
+  --settings-bg: #0b1322;
+  --settings-nav-bg: #0e182b;
+  --settings-accent: #22b8cf;
+}
+html.settingsWindow[data-settings-theme="graphite"],
+.settingsThemeSwatch[data-settings-theme="graphite"] {
+  --settings-bg: #141518;
+  --settings-nav-bg: #191a1e;
+  --settings-accent: #8f9bb3;
+}
+html.settingsWindow[data-settings-theme="violet"],
+.settingsThemeSwatch[data-settings-theme="violet"] {
+  --settings-bg: #120d1c;
+  --settings-nav-bg: #171126;
+  --settings-accent: #9b6bff;
+}
+html.settingsWindow[data-settings-theme="forest"],
+.settingsThemeSwatch[data-settings-theme="forest"] {
+  --settings-bg: #0b1511;
+  --settings-nav-bg: #0f1c16;
+  --settings-accent: #3fbf7f;
+}
+html.settingsWindow[data-settings-theme="crimson"],
+.settingsThemeSwatch[data-settings-theme="crimson"] {
+  --settings-bg: #170c0f;
+  --settings-nav-bg: #1e1014;
+  --settings-accent: #e5484d;
+}
+html.settingsWindow[data-settings-theme="ocean"],
+.settingsThemeSwatch[data-settings-theme="ocean"] {
+  --settings-bg: #071619;
+  --settings-nav-bg: #0a1e22;
+  --settings-accent: #14b8a6;
+}
+html.settingsWindow[data-settings-theme="sapphire"],
+.settingsThemeSwatch[data-settings-theme="sapphire"] {
+  --settings-bg: #0a0f24;
+  --settings-nav-bg: #0d1430;
+  --settings-accent: #3b6cf6;
+}
+html.settingsWindow[data-settings-theme="indigo"],
+.settingsThemeSwatch[data-settings-theme="indigo"] {
+  --settings-bg: #0e0d22;
+  --settings-nav-bg: #13112d;
+  --settings-accent: #6366f1;
+}
+html.settingsWindow[data-settings-theme="rose"],
+.settingsThemeSwatch[data-settings-theme="rose"] {
+  --settings-bg: #1a0d14;
+  --settings-nav-bg: #22111a;
+  --settings-accent: #ec4899;
+}
+html.settingsWindow[data-settings-theme="sunset"],
+.settingsThemeSwatch[data-settings-theme="sunset"] {
+  --settings-bg: #1a100a;
+  --settings-nav-bg: #22150d;
+  --settings-accent: #f97316;
+}
+html.settingsWindow[data-settings-theme="amber"],
+.settingsThemeSwatch[data-settings-theme="amber"] {
+  --settings-bg: #17120a;
+  --settings-nav-bg: #1e170d;
+  --settings-accent: #e0a526;
+}
+html.settingsWindow[data-settings-theme="copper"],
+.settingsThemeSwatch[data-settings-theme="copper"] {
+  --settings-bg: #160f0c;
+  --settings-nav-bg: #1d1410;
+  --settings-accent: #c8693a;
+}
+html.settingsWindow[data-settings-theme="lime"],
+.settingsThemeSwatch[data-settings-theme="lime"] {
+  --settings-bg: #0f140a;
+  --settings-nav-bg: #141a0d;
+  --settings-accent: #7cc416;
+}
+html.settingsWindow[data-settings-theme="ice"],
+.settingsThemeSwatch[data-settings-theme="ice"] {
+  --settings-bg: #0b1219;
+  --settings-nav-bg: #0f1822;
+  --settings-accent: #6cc4f0;
+}
+html.settingsWindow[data-settings-theme="slate"],
+.settingsThemeSwatch[data-settings-theme="slate"] {
+  --settings-bg: #0f141b;
+  --settings-nav-bg: #141b24;
+  --settings-accent: #71829b;
+}
+html.settingsWindow[data-settings-theme="onyx"],
+.settingsThemeSwatch[data-settings-theme="onyx"] {
+  --settings-bg: #000000;
+  --settings-nav-bg: #0b0b0c;
+  --settings-accent: #a1a1aa;
+}
+/* Each choice in the menu: a dot of its accent on its background. */
+.settingsThemeSwatch {
+  --settings-bg: #0a0e16;
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-right: 7px;
+  vertical-align: -2px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 4px solid var(--settings-bg);
+  background: var(--settings-accent, var(--isUser-fill));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+.settingsThemeSwatch[data-settings-theme="meter"] {
+  --settings-accent: var(--isUser-fill);
+}
+html.settingsWindow .settingsNav {
+  background: var(--settings-nav-bg);
+}
+
 html.settingsWindow,
 html.settingsWindow body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0a0e16;
+  background: var(--settings-bg);
 }
 
 html.settingsWindow .container,
@@ -6862,7 +6989,7 @@ html.settingsWindow .settingsPanel {
   height: 100%;
   border: 0;
   border-radius: 0;
-  background: #0a0e16;
+  background: var(--settings-bg);
   overflow: hidden;
   --set-nav-w: 204px;
 }
@@ -6884,7 +7011,7 @@ html.settingsWindow .settingsFooter {
    see tauriBridge.js; not -webkit-app-region, which froze the app). */
 html.settingsWindow .settingsHeader {
   flex: 0 0 auto;
-  background: #0a0e16;
+  background: var(--settings-bg);
 }
 
 /* ============================================================
@@ -7822,8 +7949,8 @@ html.a2-offline .historyUploadBtn {
   padding: 0 14px;
 }
 .settingsPanel .hotkeyConsentConfirm {
-  border-color: var(--isUser-fill);
-  background: var(--isUser-fill);
+  border-color: var(--settings-accent, var(--isUser-fill));
+  background: var(--settings-accent, var(--isUser-fill));
   color: #fff;
 }
 

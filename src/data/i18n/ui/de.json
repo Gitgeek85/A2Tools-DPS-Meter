@@ -342,6 +342,29 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Farben der Einstellungen",
+      "tip": "Die Farben dieses Einstellungsfensters. Das Meter behält sein eigenes Farbschema.",
+      "options": {
+        "meter": "Meter-Farbschema",
+        "midnight": "Mitternacht",
+        "graphite": "Graphit",
+        "violet": "Violett",
+        "forest": "Wald",
+        "crimson": "Karmesin",
+        "ocean": "Ozean",
+        "sapphire": "Saphir",
+        "indigo": "Indigo",
+        "rose": "Rose",
+        "sunset": "Sonnenuntergang",
+        "amber": "Bernstein",
+        "copper": "Kupfer",
+        "lime": "Limette",
+        "ice": "Eis",
+        "slate": "Schiefer",
+        "onyx": "Onyx"
+      }
+    },
     "textureOffset": "Texturen versetzen",
     "barTexture": {
       "label": "Balkentextur",

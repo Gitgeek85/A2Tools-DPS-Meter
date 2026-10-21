@@ -342,6 +342,29 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "設定画面の色",
+      "tip": "この設定ウィンドウの色です。メーターは自身のテーマのままです。",
+      "options": {
+        "meter": "メーターのテーマ",
+        "midnight": "ミッドナイト",
+        "graphite": "グラファイト",
+        "violet": "バイオレット",
+        "forest": "フォレスト",
+        "crimson": "クリムゾン",
+        "ocean": "オーシャン",
+        "sapphire": "サファイア",
+        "indigo": "インディゴ",
+        "rose": "ローズ",
+        "sunset": "サンセット",
+        "amber": "アンバー",
+        "copper": "カッパー",
+        "lime": "ライム",
+        "ice": "アイス",
+        "slate": "スレート",
+        "onyx": "オニキス"
+      }
+    },
     "textureOffset": "テクスチャをずらす",
     "barTexture": {
       "label": "バーの質感",

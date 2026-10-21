@@ -342,6 +342,29 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Cores das configurações",
+      "tip": "As cores desta janela de configurações. O medidor mantém o próprio tema.",
+      "options": {
+        "meter": "Tema do medidor",
+        "midnight": "Meia-noite",
+        "graphite": "Grafite",
+        "violet": "Violeta",
+        "forest": "Floresta",
+        "crimson": "Carmesim",
+        "ocean": "Oceano",
+        "sapphire": "Safira",
+        "indigo": "Índigo",
+        "rose": "Rosa",
+        "sunset": "Pôr do sol",
+        "amber": "Âmbar",
+        "copper": "Cobre",
+        "lime": "Lima",
+        "ice": "Gelo",
+        "slate": "Ardósia",
+        "onyx": "Ônix"
+      }
+    },
     "textureOffset": "Deslocar texturas",
     "barTexture": {
       "label": "Textura das barras",
