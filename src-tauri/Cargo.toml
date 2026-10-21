@@ -1,6 +1,6 @@
 [package]
 name = "a2tools-dps-meter"
-version = "2.0.73"
+version = "2.0.74"
 description = "A2Tools DPS Meter - AION 2 real-time DPS overlay"
 authors = ["taengu"]
 edition = "2024"
