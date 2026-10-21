@@ -402,6 +402,12 @@
         "aura": "오라"
       }
     },
+    "appearanceGroups": {
+      "general": "일반",
+      "colours": "색상",
+      "layout": "레이아웃",
+      "opacity": "불투명도"
+    },
     "language": {
       "label": "언어"
     },

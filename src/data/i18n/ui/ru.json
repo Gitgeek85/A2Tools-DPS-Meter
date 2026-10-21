@@ -402,6 +402,12 @@
         "aura": "Аура"
       }
     },
+    "appearanceGroups": {
+      "general": "Общее",
+      "colours": "Цвета",
+      "layout": "Макет",
+      "opacity": "Непрозрачность"
+    },
     "language": {
       "label": "Язык"
     },

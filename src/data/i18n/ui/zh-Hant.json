@@ -402,6 +402,12 @@
         "aura": "靈光"
       }
     },
+    "appearanceGroups": {
+      "general": "一般",
+      "colours": "色彩",
+      "layout": "版面",
+      "opacity": "不透明度"
+    },
     "language": {
       "label": "語言"
     },

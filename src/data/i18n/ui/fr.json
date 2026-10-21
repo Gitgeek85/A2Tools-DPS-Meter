@@ -397,6 +397,12 @@
         "aura": "Aura"
       }
     },
+    "appearanceGroups": {
+      "general": "Général",
+      "colours": "Couleurs",
+      "layout": "Disposition",
+      "opacity": "Opacité"
+    },
     "language": {
       "label": "Langue"
     },

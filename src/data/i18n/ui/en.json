@@ -407,6 +407,12 @@
         "aura": "Aura"
       }
     },
+    "appearanceGroups": {
+      "general": "General",
+      "colours": "Colours",
+      "layout": "Layout",
+      "opacity": "Opacity"
+    },
     "language": {
       "label": "Language"
     },

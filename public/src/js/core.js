@@ -3692,23 +3692,31 @@ class DpsApp {
       };
     };
 
-    // A long menu (the colour themes) ran past the bottom of the scrolling
-    // pane, under the Appearance preview: it ends there now and scrolls.
-    // The rects are in screen pixels and the panel is zoomed, so the room is
-    // scaled back to the menu's own pixels.
+    // An open menu is placed over everything, the Appearance preview
+    // included, rather than inside the scrolling pane, which cut it off (a
+    // long one, the colour themes, had to end at the preview and scroll).
+    // Fixed, under its button, or above it when there is more room there;
+    // it scrolls only past the window's edge. The rects are in screen pixels
+    // and the panel is zoomed, so they are scaled back to the menu's own.
     const fitMenu = (menu) => {
-      menu.style.maxHeight = "";
-      menu.style.overflowY = "";
-      let pane = menu.parentElement;
-      while (pane && !/(auto|scroll)/.test(getComputedStyle(pane).overflowY)) pane = pane.parentElement;
-      if (!pane || !menu.offsetHeight) return;
-      const rect = menu.getBoundingClientRect();
-      const scale = rect.height / menu.offsetHeight || 1;
-      const room = (pane.getBoundingClientRect().bottom - rect.top - 8) / scale;
+      for (const key of ["position", "top", "left", "maxHeight", "overflowY", "minWidth"]) menu.style[key] = "";
+      const button = menu.parentElement?.querySelector(".settingsDropdownBtn");
+      if (!button || !menu.offsetHeight || !button.offsetHeight) return;
+      const r = button.getBoundingClientRect();
+      const scale = r.height / button.offsetHeight || 1;
+      const below = (window.innerHeight - r.bottom - 8) / scale;
+      const above = (r.top - 8) / scale;
+      menu.style.position = "fixed";
+      menu.style.minWidth = `${r.width / scale}px`;
+      const up = menu.offsetHeight > below && above > below;
+      const room = up ? above : below;
       if (menu.offsetHeight > room) {
         menu.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
         menu.style.overflowY = "auto";
       }
+      const top = up ? r.top / scale - 4 - menu.offsetHeight : r.bottom / scale + 4;
+      menu.style.top = `${Math.max(4, top)}px`;
+      menu.style.left = `${Math.max(4, r.right / scale - menu.offsetWidth)}px`;
     };
 
     if (!this._settingsDropdownOutsideBound) {
@@ -3717,6 +3725,12 @@ class DpsApp {
           closeAll();
         }
       });
+      // A placed menu stays where it opened: scrolling the pane under it, or
+      // resizing the window, closes it (scrolling the menu itself does not).
+      document.addEventListener("scroll", (event) => {
+        if (!event.target?.closest?.(".settingsDropdownMenu")) closeAll();
+      }, true);
+      window.addEventListener("resize", () => closeAll());
       this._settingsDropdownOutsideBound = true;
     }
 

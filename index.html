@@ -736,6 +736,7 @@
               <section class="settingsSection" id="settingsSection-appearance" role="tabpanel" aria-labelledby="settingsTab-appearance" data-section="appearance" hidden>
                 <h2 class="settingsSectionTitle" data-i18n="settings.appearance">Appearance</h2>
                 <div class="settingsGroupBody">
+                  <h3 class="settingsSubTitle appearanceGroupTitle" data-i18n="settings.appearanceGroups.general">General</h3>
                   <div class="settingsRow settingsRowSelect">
                     <div class="settingsInfo">
                       <div class="settingsLabel" data-i18n="settings.language.label">Language</div>
@@ -750,14 +751,14 @@
                   </div>
                   <div class="settingsRow settingsRowSelect">
                     <div class="settingsInfo">
-                      <div class="settingsLabel" data-i18n="settings.theme.label">Colour theme</div>
+                      <div class="settingsLabel" data-i18n="settings.font.label" title="The font of the meter, Settings, Battle History and Details." data-i18n-title="settings.font.tip">Font</div>
                     </div>
-                    <div class="settingsDropdownWrapper themeDropdownWrapper">
-                      <button class="settingsDropdownBtn themeDropdownBtn" type="button">
+                    <div class="settingsDropdownWrapper fontDropdownWrapper">
+                      <button class="settingsDropdownBtn fontDropdownBtn" type="button">
                         <span class="settingsDropdownText">-</span>
                         <span class="settingsDropdownCaret" aria-hidden="true">▾</span>
                       </button>
-                      <div class="settingsDropdownMenu themeDropdownMenu" role="menu"></div>
+                      <div class="settingsDropdownMenu fontDropdownMenu" role="menu"></div>
                     </div>
                   </div>
                   <div class="settingsRow settingsRowSelect">
@@ -772,16 +773,17 @@
                       <div class="settingsDropdownMenu settingsThemeDropdownMenu" role="menu"></div>
                     </div>
                   </div>
+                  <h3 class="settingsSubTitle appearanceGroupTitle" data-i18n="settings.appearanceGroups.colours">Colours</h3>
                   <div class="settingsRow settingsRowSelect">
                     <div class="settingsInfo">
-                      <div class="settingsLabel" data-i18n="settings.font.label" title="The font of the meter, Settings, Battle History and Details." data-i18n-title="settings.font.tip">Font</div>
+                      <div class="settingsLabel" data-i18n="settings.theme.label">Colour theme</div>
                     </div>
-                    <div class="settingsDropdownWrapper fontDropdownWrapper">
-                      <button class="settingsDropdownBtn fontDropdownBtn" type="button">
+                    <div class="settingsDropdownWrapper themeDropdownWrapper">
+                      <button class="settingsDropdownBtn themeDropdownBtn" type="button">
                         <span class="settingsDropdownText">-</span>
                         <span class="settingsDropdownCaret" aria-hidden="true">▾</span>
                       </button>
-                      <div class="settingsDropdownMenu fontDropdownMenu" role="menu"></div>
+                      <div class="settingsDropdownMenu themeDropdownMenu" role="menu"></div>
                     </div>
                   </div>
                   <div class="settingsRow settingsRowSelect">
@@ -806,72 +808,6 @@
                       </span>
                     </label>
                   </div>
-                  <div class="settingsRow settingsRowSelect">
-                    <div class="settingsInfo">
-                      <div class="settingsLabel" data-i18n="settings.meterLayout.label">Meter layout</div>
-                    </div>
-                    <div class="settingsDropdownWrapper meterLayoutDropdownWrapper">
-                      <button class="settingsDropdownBtn meterLayoutDropdownBtn" type="button">
-                        <span class="settingsDropdownText">Standard</span>
-                        <span class="settingsDropdownCaret" aria-hidden="true">▾</span>
-                      </button>
-                      <div class="settingsDropdownMenu meterLayoutDropdownMenu" role="menu"></div>
-                    </div>
-                  </div>
-                  <div class="settingsRow settingsRowInput">
-                    <div class="settingsInfo">
-                      <div class="settingsLabel" data-i18n="settings.windowOpacity.label" title="How see-through the meter's background is. Bars and text stay as they are." data-i18n-title="settings.tips.windowOpacity">Background opacity</div>
-                    </div>
-                    <div class="settingsRangeInline">
-                      <input
-                        id="windowOpacityInput"
-                        class="settingsRange windowOpacityInput"
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value="40"
-                        aria-label="Background opacity"
-                        data-i18n-aria-label="settings.windowOpacity.label" />
-                      <div class="settingsValue windowOpacityValue">40%</div>
-                    </div>
-                  </div>
-                  <div class="settingsRow settingsRowInput">
-                    <div class="settingsInfo">
-                      <div class="settingsLabel" data-i18n="settings.titleOpacity.label" title="How see-through the meter's title bar is, apart from the background under it. Until you move it, it follows the background." data-i18n-title="settings.tips.titleOpacity">Title bar opacity</div>
-                    </div>
-                    <div class="settingsRangeInline">
-                      <input
-                        id="titleOpacityInput"
-                        class="settingsRange titleOpacityInput"
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value="40"
-                        aria-label="Title bar opacity"
-                        data-i18n-aria-label="settings.titleOpacity.label" />
-                      <div class="settingsValue titleOpacityValue">40%</div>
-                    </div>
-                  </div>
-                  <div class="settingsRow settingsRowInput">
-                    <div class="settingsInfo">
-                      <div class="settingsLabel" data-i18n="settings.meterOpacity.label" title="How solid the coloured damage bars are." data-i18n-title="settings.tips.meterOpacity">Bar opacity</div>
-                    </div>
-                    <div class="settingsRangeInline">
-                      <input
-                        id="meterOpacityInput"
-                        class="settingsRange meterOpacityInput"
-                        type="range"
-                        min="10"
-                        max="100"
-                        step="5"
-                        value="80"
-                        aria-label="Bar opacity"
-                        data-i18n-aria-label="settings.meterOpacity.label" />
-                      <div class="settingsValue meterOpacityValue">80%</div>
-                    </div>
-                  </div>
                   <div class="settingsRow settingsRowInput">
                     <div class="settingsInfo">
                       <div class="settingsLabel" data-i18n="settings.meterSaturation.label" title="How strong the bars' colours are: lower for softer, higher for more vivid." data-i18n-title="settings.tips.meterSaturation">Bar colour strength</div>
@@ -888,6 +824,19 @@
                         aria-label="Bar colour strength"
                         data-i18n-aria-label="settings.meterSaturation.label" />
                       <div class="settingsValue meterSaturationValue">100%</div>
+                    </div>
+                  </div>
+                  <h3 class="settingsSubTitle appearanceGroupTitle" data-i18n="settings.appearanceGroups.layout">Layout</h3>
+                  <div class="settingsRow settingsRowSelect">
+                    <div class="settingsInfo">
+                      <div class="settingsLabel" data-i18n="settings.meterLayout.label">Meter layout</div>
+                    </div>
+                    <div class="settingsDropdownWrapper meterLayoutDropdownWrapper">
+                      <button class="settingsDropdownBtn meterLayoutDropdownBtn" type="button">
+                        <span class="settingsDropdownText">Standard</span>
+                        <span class="settingsDropdownCaret" aria-hidden="true">▾</span>
+                      </button>
+                      <div class="settingsDropdownMenu meterLayoutDropdownMenu" role="menu"></div>
                     </div>
                   </div>
                   <div class="settingsRow settingsRowInput">
@@ -945,6 +894,61 @@
                           <span class="settingsToggleTrack" aria-hidden="true"></span>
                         </span>
                       </label>
+                    </div>
+                  </div>
+                  <h3 class="settingsSubTitle appearanceGroupTitle" data-i18n="settings.appearanceGroups.opacity">Opacity</h3>
+                  <div class="settingsRow settingsRowInput">
+                    <div class="settingsInfo">
+                      <div class="settingsLabel" data-i18n="settings.windowOpacity.label" title="How see-through the meter's background is. Bars and text stay as they are." data-i18n-title="settings.tips.windowOpacity">Background opacity</div>
+                    </div>
+                    <div class="settingsRangeInline">
+                      <input
+                        id="windowOpacityInput"
+                        class="settingsRange windowOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value="40"
+                        aria-label="Background opacity"
+                        data-i18n-aria-label="settings.windowOpacity.label" />
+                      <div class="settingsValue windowOpacityValue">40%</div>
+                    </div>
+                  </div>
+                  <div class="settingsRow settingsRowInput">
+                    <div class="settingsInfo">
+                      <div class="settingsLabel" data-i18n="settings.titleOpacity.label" title="How see-through the meter's title bar is, apart from the background under it. Until you move it, it follows the background." data-i18n-title="settings.tips.titleOpacity">Title bar opacity</div>
+                    </div>
+                    <div class="settingsRangeInline">
+                      <input
+                        id="titleOpacityInput"
+                        class="settingsRange titleOpacityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value="40"
+                        aria-label="Title bar opacity"
+                        data-i18n-aria-label="settings.titleOpacity.label" />
+                      <div class="settingsValue titleOpacityValue">40%</div>
+                    </div>
+                  </div>
+                  <div class="settingsRow settingsRowInput">
+                    <div class="settingsInfo">
+                      <div class="settingsLabel" data-i18n="settings.meterOpacity.label" title="How solid the coloured damage bars are." data-i18n-title="settings.tips.meterOpacity">Bar opacity</div>
+                    </div>
+                    <div class="settingsRangeInline">
+                      <input
+                        id="meterOpacityInput"
+                        class="settingsRange meterOpacityInput"
+                        type="range"
+                        min="10"
+                        max="100"
+                        step="5"
+                        value="80"
+                        aria-label="Bar opacity"
+                        data-i18n-aria-label="settings.meterOpacity.label" />
+                      <div class="settingsValue meterOpacityValue">80%</div>
                     </div>
                   </div>
                 </div>

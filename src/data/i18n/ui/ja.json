@@ -397,6 +397,12 @@
         "aura": "オーラ"
       }
     },
+    "appearanceGroups": {
+      "general": "全般",
+      "colours": "色",
+      "layout": "レイアウト",
+      "opacity": "不透明度"
+    },
     "language": {
       "label": "言語"
     },

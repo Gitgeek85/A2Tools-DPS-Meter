@@ -397,6 +397,12 @@
         "aura": "Aura"
       }
     },
+    "appearanceGroups": {
+      "general": "Allgemein",
+      "colours": "Farben",
+      "layout": "Layout",
+      "opacity": "Deckkraft"
+    },
     "language": {
       "label": "Sprache"
     },
