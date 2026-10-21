@@ -365,6 +365,21 @@
         "onyx": "Onyx"
       }
     },
+    "font": {
+      "label": "Police",
+      "tip": "La police du compteur, des paramètres, de l'historique des combats et des détails.",
+      "options": {
+        "meter": "Police du compteur",
+        "system": "Police du système",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (chiffres de même largeur)",
+        "atkinson": "Atkinson Hyperlegible (pour basse vision)",
+        "lexend": "Lexend (lecture facilitée)",
+        "opendyslexic": "OpenDyslexic (pour la dyslexie)"
+      }
+    },
     "textureOffset": "Décaler les textures",
     "barTexture": {
       "label": "Texture des barres",

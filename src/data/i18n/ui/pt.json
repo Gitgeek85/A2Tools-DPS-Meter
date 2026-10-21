@@ -365,6 +365,21 @@
         "onyx": "Ônix"
       }
     },
+    "font": {
+      "label": "Fonte",
+      "tip": "A fonte do medidor, das configurações, do histórico de combates e dos detalhes.",
+      "options": {
+        "meter": "Fonte do medidor",
+        "system": "Fonte do sistema",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (números de mesma largura)",
+        "atkinson": "Atkinson Hyperlegible (para baixa visão)",
+        "lexend": "Lexend (leitura mais fácil)",
+        "opendyslexic": "OpenDyslexic (para dislexia)"
+      }
+    },
     "textureOffset": "Deslocar texturas",
     "barTexture": {
       "label": "Textura das barras",

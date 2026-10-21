@@ -365,6 +365,21 @@
         "onyx": "Onyx"
       }
     },
+    "font": {
+      "label": "Schriftart",
+      "tip": "Die Schrift der Anzeige, der Einstellungen, des Kampfverlaufs und der Details.",
+      "options": {
+        "meter": "Schrift der Anzeige",
+        "system": "Systemschrift",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (gleich breite Ziffern)",
+        "atkinson": "Atkinson Hyperlegible (für Sehschwäche)",
+        "lexend": "Lexend (leichter lesbar)",
+        "opendyslexic": "OpenDyslexic (für Legasthenie)"
+      }
+    },
     "textureOffset": "Texturen versetzen",
     "barTexture": {
       "label": "Balkentextur",

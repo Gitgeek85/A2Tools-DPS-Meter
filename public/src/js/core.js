@@ -14,6 +14,8 @@ const SETTING_CHOICES = {
   // The Settings window's own colours (styles.css, data-settings-theme):
   // "meter" keeps the meter theme's accent.
   settingsTheme: { allowed: ["meter", "midnight", "graphite", "violet", "forest", "crimson", "ocean", "sapphire", "indigo", "rose", "sunset", "amber", "copper", "lime", "ice", "slate", "onyx"], fallback: "meter" },
+  // The meter's font (styles.css, data-font): "meter" is its own (#98).
+  font: { allowed: ["meter", "system", "inter", "exo2", "oxanium", "jetbrains", "atkinson", "lexend", "opendyslexic"], fallback: "meter" },
   barTexture: { allowed: ["none", "flames", "crystal", "glacier", "feathers", "wing", "storm", "nebula", "galaxy", "aura"], fallback: "none" },
 };
 // Themes whose bars differ from one another show those colours in the theme
@@ -118,6 +120,7 @@ class DpsApp {
       theme: "dpsMeter.theme",
       slimMode: "dpsMeter.slimMode",
       settingsTheme: "dpsMeter.settingsTheme",
+      font: "dpsMeter.font",
       autoHideMeter: "dpsMeter.autoHideMeter",
       hideWhenGameClosed: "dpsMeter.hideWhenGameClosed",
       globalHotkeys: "dpsMeter.globalHotkeys",
@@ -2690,10 +2693,13 @@ class DpsApp {
     this.themeDropdownMenu = document.querySelector(".themeDropdownMenu");
     this.settingsThemeDropdownBtn = document.querySelector(".settingsThemeDropdownBtn");
     this.settingsThemeDropdownMenu = document.querySelector(".settingsThemeDropdownMenu");
+    this.fontDropdownBtn = document.querySelector(".fontDropdownBtn");
+    this.fontDropdownMenu = document.querySelector(".fontDropdownMenu");
     this.settingsSelections = {
       language: "en",
       theme: this.theme,
       settingsTheme: "meter",
+      font: "meter",
       defaultMeterMode: "bossTargets",
       allTargetsWindowMs: "120000",
       trainSelectionMode: "all",
@@ -2763,6 +2769,7 @@ class DpsApp {
     });
     this.applyTheme(storedTheme || this.theme, { persist: false });
     this.applySettingsTheme(this.safeGetSetting(this.storageKeys.settingsTheme));
+    this.applyFont(this.safeGetSetting(this.storageKeys.font));
     if (storedLanguage && storedLanguage !== this.i18n?.getLanguage?.()) {
       this.i18n?.setLanguage?.(storedLanguage, { persist: false });
     }
@@ -3830,6 +3837,38 @@ class DpsApp {
           swatch.dataset.settingsTheme = value;
           swatch.setAttribute("aria-hidden", "true");
           item.prepend(swatch);
+        },
+      }
+    );
+
+    // Each font's name in the font itself, so the menu shows how it reads.
+    const FONT_PREVIEW = {
+      meter: '"Pretendard", "A2 Pretendard", "Segoe UI", sans-serif',
+      system: 'system-ui, "Segoe UI", "Noto Sans", sans-serif',
+      inter: '"A2 Inter", sans-serif',
+      exo2: '"A2 Exo 2", sans-serif',
+      oxanium: '"A2 Oxanium", sans-serif',
+      jetbrains: '"A2 JetBrains Mono", monospace',
+      atkinson: '"A2 Atkinson", sans-serif',
+      lexend: '"A2 Lexend", sans-serif',
+      opendyslexic: '"A2 OpenDyslexic", sans-serif',
+    };
+    const fontOptions = SETTING_CHOICES.font.allowed.map((value) => ({
+      value,
+      label: this.i18n?.t(`settings.font.options.${value}`, value[0].toUpperCase() + value.slice(1)),
+    }));
+    setupDropdown(
+      this.fontDropdownBtn,
+      this.fontDropdownMenu,
+      fontOptions,
+      this.settingsSelections.font,
+      (value) => {
+        if (!value) return;
+        this.applyFont(value, { persist: true });
+      },
+      {
+        decorateItem: (item, value) => {
+          item.style.fontFamily = FONT_PREVIEW[value] || "";
         },
       }
     );
@@ -4974,6 +5013,7 @@ class DpsApp {
     this.setBetaUi(true);
     this.setSlimMode(get("slimMode") === "true");
     this.applyTheme(get("theme") || this.theme);
+    this.applyFont(get("font"));
     const language = get("language");
     if (isSet(language)) this.applyRemoteSettingChange(this.storageKeys.language, language);
     this.settingsSelections.language = this.i18n?.getLanguage?.() || this.settingsSelections.language;
@@ -5259,6 +5299,17 @@ class DpsApp {
   }
 
   // The Settings window's colours, apart from the meter's theme.
+  // The font of every meter window (#98): data-font on the page, which
+  // styles.css turns into the font; "meter" keeps the meter's own.
+  applyFont(value, { persist = false } = {}) {
+    const normalized = pickSettingChoice("font", value);
+    const root = document.documentElement;
+    if (root?.dataset) root.dataset.font = normalized;
+    if (this.settingsSelections) this.settingsSelections.font = normalized;
+    this.syncSettingsDropdownSelection(this.fontDropdownBtn, this.fontDropdownMenu, normalized);
+    if (persist) this.safeSetSetting(this.storageKeys.font, normalized);
+  }
+
   applySettingsTheme(value, { persist = false } = {}) {
     const normalized = pickSettingChoice("settingsTheme", value);
     document.documentElement.dataset.settingsTheme = normalized;
@@ -5543,6 +5594,10 @@ class DpsApp {
     }
     if (key === this.storageKeys.theme) {
       this.applyTheme(value, { persist: false });
+      return;
+    }
+    if (key === this.storageKeys.font) {
+      this.applyFont(value);
       return;
     }
     if (key === this.storageKeys.playerLimit) {

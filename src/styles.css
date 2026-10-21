@@ -7119,6 +7119,156 @@ html.linux:lang(zh-Hant), html.linux:lang(zh-Hant) body {
   font-family: sans-serif;
 }
 
+/* The font chosen in Settings → Appearance (#98; core.js applyFont): the
+   meter's own (Saira and Pretendard, above) unless one is picked. Each sets
+   the page's font and the two the HUD uses; Korean and Chinese fall back to
+   their usual faces. All under the SIL Open Font License (fonts/). A face's
+   file loads only once a page uses it. */
+@font-face {
+  font-family: "A2 Inter";
+  src: url("./fonts/Inter-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "A2 Inter";
+  src: url("./fonts/Inter-latin-ext.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 Exo 2";
+  src: url("./fonts/Exo2-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "A2 Exo 2";
+  src: url("./fonts/Exo2-latin-ext.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 Oxanium";
+  src: url("./fonts/Oxanium-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "A2 Oxanium";
+  src: url("./fonts/Oxanium-latin-ext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 JetBrains Mono";
+  src: url("./fonts/JetBrainsMono-latin.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "A2 JetBrains Mono";
+  src: url("./fonts/JetBrainsMono-latin-ext.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 Atkinson";
+  src: url("./fonts/AtkinsonHyperlegibleNext-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "A2 Atkinson";
+  src: url("./fonts/AtkinsonHyperlegibleNext-latin-ext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 Lexend";
+  src: url("./fonts/Lexend-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "A2 Lexend";
+  src: url("./fonts/Lexend-latin-ext.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 OpenDyslexic";
+  src: url("./fonts/OpenDyslexic-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "A2 OpenDyslexic";
+  src: url("./fonts/OpenDyslexic-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+html[data-font="system"] {
+  --a2-font: system-ui, "Segoe UI", "Noto Sans", sans-serif;
+  --hud-tech: system-ui, "Segoe UI", "Noto Sans", sans-serif;
+  --hud-ident: system-ui, "Segoe UI", "Noto Sans", sans-serif;
+}
+html[data-font="inter"] {
+  --a2-font: "A2 Inter", var(--cjk-font-stack);
+  --hud-tech: "A2 Inter", var(--cjk-font-stack);
+  --hud-ident: "A2 Inter", var(--cjk-font-stack);
+}
+html[data-font="exo2"] {
+  --a2-font: "A2 Exo 2", var(--cjk-font-stack);
+  --hud-tech: "A2 Exo 2", var(--cjk-font-stack);
+  --hud-ident: "A2 Exo 2", var(--cjk-font-stack);
+}
+html[data-font="oxanium"] {
+  --a2-font: "A2 Oxanium", var(--cjk-font-stack);
+  --hud-tech: "A2 Oxanium", var(--cjk-font-stack);
+  --hud-ident: "A2 Oxanium", var(--cjk-font-stack);
+}
+html[data-font="jetbrains"] {
+  --a2-font: "A2 JetBrains Mono", ui-monospace, var(--cjk-font-stack);
+  --hud-tech: "A2 JetBrains Mono", ui-monospace, var(--cjk-font-stack);
+  --hud-ident: "A2 JetBrains Mono", ui-monospace, var(--cjk-font-stack);
+}
+html[data-font="atkinson"] {
+  --a2-font: "A2 Atkinson", var(--cjk-font-stack);
+  --hud-tech: "A2 Atkinson", var(--cjk-font-stack);
+  --hud-ident: "A2 Atkinson", var(--cjk-font-stack);
+}
+html[data-font="lexend"] {
+  --a2-font: "A2 Lexend", var(--cjk-font-stack);
+  --hud-tech: "A2 Lexend", var(--cjk-font-stack);
+  --hud-ident: "A2 Lexend", var(--cjk-font-stack);
+}
+html[data-font="opendyslexic"] {
+  --a2-font: "A2 OpenDyslexic", var(--cjk-font-stack);
+  --hud-tech: "A2 OpenDyslexic", var(--cjk-font-stack);
+  --hud-ident: "A2 OpenDyslexic", var(--cjk-font-stack);
+}
+html[data-font]:not([data-font="meter"]),
+html[data-font]:not([data-font="meter"]) body {
+  font-family: var(--a2-font) !important;
+}
+/* Saira's width axis tunes the numbers; other faces have none. */
+html[data-font]:not([data-font="meter"]) .list .item .dps > p {
+  font-variation-settings: normal;
+}
+
 /* The main meter window and Details are HUDs: dragging across them, or a
    stray double-click, should not highlight names and numbers. Settings and
    History keep selectable text (log ids), and fields stay editable. */

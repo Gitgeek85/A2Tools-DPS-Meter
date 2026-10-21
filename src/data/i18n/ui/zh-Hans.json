@@ -370,6 +370,21 @@
         "onyx": "黑玛瑙"
       }
     },
+    "font": {
+      "label": "字体",
+      "tip": "计量器、设置、战斗记录和详情使用的字体。",
+      "options": {
+        "meter": "计量器字体",
+        "system": "系统字体",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (数字等宽)",
+        "atkinson": "Atkinson Hyperlegible (适合低视力)",
+        "lexend": "Lexend (更易阅读)",
+        "opendyslexic": "OpenDyslexic (适合阅读障碍)"
+      }
+    },
     "textureOffset": "错开纹理",
     "barTexture": {
       "label": "条形纹理",

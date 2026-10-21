@@ -370,6 +370,21 @@
         "onyx": "Оникс"
       }
     },
+    "font": {
+      "label": "Шрифт",
+      "tip": "Шрифт счётчика, настроек, истории боёв и подробностей.",
+      "options": {
+        "meter": "Шрифт счётчика",
+        "system": "Системный шрифт",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (цифры одной ширины)",
+        "atkinson": "Atkinson Hyperlegible (для слабовидящих)",
+        "lexend": "Lexend (легче читать)",
+        "opendyslexic": "OpenDyslexic (при дислексии)"
+      }
+    },
     "textureOffset": "Сдвигать текстуры",
     "barTexture": {
       "label": "Текстура полос",

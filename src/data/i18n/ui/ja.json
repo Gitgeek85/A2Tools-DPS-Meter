@@ -365,6 +365,21 @@
         "onyx": "オニキス"
       }
     },
+    "font": {
+      "label": "フォント",
+      "tip": "メーター、設定、戦闘履歴、詳細のフォントです。",
+      "options": {
+        "meter": "メーターのフォント",
+        "system": "システムフォント",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (数字の幅がそろう)",
+        "atkinson": "Atkinson Hyperlegible (ロービジョン向け)",
+        "lexend": "Lexend (読みやすさ重視)",
+        "opendyslexic": "OpenDyslexic (ディスレクシア向け)"
+      }
+    },
     "textureOffset": "テクスチャをずらす",
     "barTexture": {
       "label": "バーの質感",

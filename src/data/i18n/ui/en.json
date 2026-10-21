@@ -375,6 +375,21 @@
         "onyx": "Onyx"
       }
     },
+    "font": {
+      "label": "Font",
+      "tip": "The font of the meter, Settings, Battle History and Details.",
+      "options": {
+        "meter": "Meter font",
+        "system": "System font",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (even-width numbers)",
+        "atkinson": "Atkinson Hyperlegible (for low vision)",
+        "lexend": "Lexend (easier reading)",
+        "opendyslexic": "OpenDyslexic (for dyslexia)"
+      }
+    },
     "textureOffset": "Offset textures",
     "barTexture": {
       "label": "Bar texture",
