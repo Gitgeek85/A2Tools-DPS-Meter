@@ -516,8 +516,9 @@ impl StreamProcessor {
         offset += 1;
         // Effect type: 0x02/0x0A = damage; 0x01/0x09 = heal; 0x0B = HoT.
         // 0x00 = status, 0x08 = buff. Exact match, NOT bitmask — 0x0B (HoT) has bit
-        // 1 set and would leak through a mask.
-        let is_damage = effect_type == 0x02 || effect_type == 0x0A;
+        // 1 set and would leak through a mask. Damage into a shield adds 0x04
+        // (0x06/0x0E), with the absorbing effects after the amount (#94).
+        let is_damage = matches!(effect_type, 0x02 | 0x0A | 0x06 | 0x0E);
         let is_heal = effect_type == 0x01 || effect_type == 0x09 || effect_type == 0x0B;
         if !is_damage && !is_heal {
             return;
@@ -2186,6 +2187,18 @@ fn parse_hit_tail_as(packet: &[u8], mut offset: usize, layout: i32, switch_value
             return None;
         }
     }
+    // A hit into a shield: the effects that absorbed part of it, a count and
+    // that many u32 ids. The value before them is what got through (#94).
+    if switch_value & 0x40 != 0 {
+        let absorbed = try_read_varint(packet, &mut offset)?;
+        if !(1..=8).contains(&absorbed) {
+            return None;
+        }
+        offset = offset.checked_add(4 * absorbed as usize)?;
+        if offset > packet.len() {
+            return None;
+        }
+    }
     let rest = &packet[offset.min(packet.len())..];
     let clean_end = rest.is_empty()
         || (rest.len() >= 2 && rest[1] == 0x00 && (1..=7).contains(&rest[0]))
@@ -3706,6 +3719,36 @@ mod tests {
         assert_eq!(storage.get_mob_current_hp(25839), Some(100_000_000));
         hp(&mut p, "00E9A435"); // 900,000,000, over the spawn's 810 million
         assert_eq!(storage.get_mob_current_hp(25839), Some(100_000_000));
+    }
+
+    /// Hits into a shield (Global EU, 2026-10-06, effect 122307011 `c3 41 4a
+    /// 07`; from #94): switch bit 0x40 puts the absorbing effects after the
+    /// value, a count and that many u32 ids. Read as extra hits they added the
+    /// shield's id, 8,387, to each: 581 counted as 8,968, 317 as 8,704.
+    #[test]
+    fn a_hit_into_a_shield_is_its_value() {
+        for (record, value) in [
+            ("F3B7024600A17B680BC8001502000002D545244E02000000F462C50401C3414A070200", 581),
+            ("F3B7024400A17B181DD2001A026B5D135201000000F462BD0201C3414A070100", 317),
+        ] {
+            let (storage, mut p) = processor();
+            assert!(feed(&mut p, record));
+            let total: i64 = storage.get_combat_snapshot().values()
+                .flat_map(|t| t.actors.values()).map(|a| a.total_damage).sum();
+            assert_eq!(total, value, "{record}");
+        }
+    }
+
+    /// A DoT tick into the same shield: effect type 0x0E (0x0A with 0x04),
+    /// the absorbing effects after the amount. It was dropped; it is 77.
+    #[test]
+    fn a_dot_tick_into_a_shield_counts() {
+        let (storage, mut p) = processor();
+        p.set_dot_skill_ids(HashSet::from([13_730_007]));
+        p.parse_dot_packet(&hex("1B0538F3B7020EA17B020854D6514D01C3414A07D780D100"));
+        let total: i64 = storage.get_combat_snapshot().values()
+            .flat_map(|t| t.actors.values()).map(|a| a.total_damage).sum();
+        assert_eq!(total, 77);
     }
 
     /// A Wind Spirit's Malicious Whirlwind ticks on after the spirit is
