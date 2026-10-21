@@ -132,8 +132,11 @@ pub fn sync_game_hiding(app: &tauri::AppHandle) {
             if shown && hidden.insert(label) {
                 crate::platform::window::hide_in_place(&window);
             }
-        } else if hidden.remove(&label) && !crate::platform::window::reveal_in_place(&window) {
-            crate::platform::window::show_on_top_without_focus(&window);
+        } else if hidden.remove(&label) {
+            if !crate::platform::window::reveal_in_place(&window) {
+                crate::platform::window::show_on_top_without_focus(&window);
+            }
+            widgets::relock(app, &window);
         }
     }
 }

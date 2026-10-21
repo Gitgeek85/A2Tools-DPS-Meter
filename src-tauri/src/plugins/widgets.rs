@@ -99,10 +99,17 @@ fn apply_lock(window: &tauri::WebviewWindow, locked: bool) {
 /// Every widget's click-through as its lock and area say (after a
 /// screenshot tool, see `app::screenshot_tool_in_front`).
 pub fn reapply_locks(app: &tauri::AppHandle) {
-    for (label, window) in app.webview_windows() {
-        if let Some((id, _)) = parse_label(&label) {
-            apply_lock(&window, is_locked(app, &id));
-        }
+    for (_, window) in app.webview_windows() {
+        relock(app, &window);
+    }
+}
+
+/// A widget's click-through as its lock and area say, if `window` is one:
+/// after `platform::window::reveal_in_place`, which gives a window the whole
+/// mouse, so a locked widget shown again took the clicks over it.
+pub fn relock(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+    if let Some((id, _)) = parse_label(window.label()) {
+        apply_lock(window, is_locked(app, &id));
     }
 }
 
