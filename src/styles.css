@@ -7209,16 +7209,32 @@ html.linux:lang(zh-Hant), html.linux:lang(zh-Hant) body {
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-  font-family: "A2 OpenDyslexic";
-  src: url("./fonts/OpenDyslexic-400.woff2") format("woff2");
+  font-family: "A2 Andika";
+  src: url("./fonts/Andika-latin-400.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F;
 }
 @font-face {
-  font-family: "A2 OpenDyslexic";
-  src: url("./fonts/OpenDyslexic-700.woff2") format("woff2");
+  font-family: "A2 Andika";
+  src: url("./fonts/Andika-latin-ext-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "A2 Andika";
+  src: url("./fonts/Andika-latin-700.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F;
+}
+@font-face {
+  font-family: "A2 Andika";
+  src: url("./fonts/Andika-latin-ext-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 html[data-font="system"] {
   --a2-font: system-ui, "Segoe UI", "Noto Sans", sans-serif;
@@ -7255,10 +7271,10 @@ html[data-font="lexend"] {
   --hud-tech: "A2 Lexend", var(--cjk-font-stack);
   --hud-ident: "A2 Lexend", var(--cjk-font-stack);
 }
-html[data-font="opendyslexic"] {
-  --a2-font: "A2 OpenDyslexic", var(--cjk-font-stack);
-  --hud-tech: "A2 OpenDyslexic", var(--cjk-font-stack);
-  --hud-ident: "A2 OpenDyslexic", var(--cjk-font-stack);
+html[data-font="andika"] {
+  --a2-font: "A2 Andika", var(--cjk-font-stack);
+  --hud-tech: "A2 Andika", var(--cjk-font-stack);
+  --hud-ident: "A2 Andika", var(--cjk-font-stack);
 }
 html[data-font]:not([data-font="meter"]),
 html[data-font]:not([data-font="meter"]) body {

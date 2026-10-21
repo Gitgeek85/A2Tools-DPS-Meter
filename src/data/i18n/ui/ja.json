@@ -377,7 +377,7 @@
         "jetbrains": "JetBrains Mono (数字の幅がそろう)",
         "atkinson": "Atkinson Hyperlegible (ロービジョン向け)",
         "lexend": "Lexend (読みやすさ重視)",
-        "opendyslexic": "OpenDyslexic (ディスレクシア向け)"
+        "andika": "Andika (ディスレクシア向け)"
       }
     },
     "textureOffset": "テクスチャをずらす",

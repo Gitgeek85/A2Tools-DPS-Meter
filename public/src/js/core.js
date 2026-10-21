@@ -15,7 +15,7 @@ const SETTING_CHOICES = {
   // "meter" keeps the meter theme's accent.
   settingsTheme: { allowed: ["meter", "midnight", "graphite", "violet", "forest", "crimson", "ocean", "sapphire", "indigo", "rose", "sunset", "amber", "copper", "lime", "ice", "slate", "onyx"], fallback: "meter" },
   // The meter's font (styles.css, data-font): "meter" is its own (#98).
-  font: { allowed: ["meter", "system", "inter", "exo2", "oxanium", "jetbrains", "atkinson", "lexend", "opendyslexic"], fallback: "meter" },
+  font: { allowed: ["meter", "system", "inter", "exo2", "oxanium", "jetbrains", "atkinson", "lexend", "andika"], fallback: "meter" },
   barTexture: { allowed: ["none", "flames", "crystal", "glacier", "feathers", "wing", "storm", "nebula", "galaxy", "aura"], fallback: "none" },
 };
 // Themes whose bars differ from one another show those colours in the theme
@@ -3851,7 +3851,7 @@ class DpsApp {
       jetbrains: '"A2 JetBrains Mono", monospace',
       atkinson: '"A2 Atkinson", sans-serif',
       lexend: '"A2 Lexend", sans-serif',
-      opendyslexic: '"A2 OpenDyslexic", sans-serif',
+      andika: '"A2 Andika", sans-serif',
     };
     const fontOptions = SETTING_CHOICES.font.allowed.map((value) => ({
       value,
