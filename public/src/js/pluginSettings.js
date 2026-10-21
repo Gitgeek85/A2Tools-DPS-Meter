@@ -100,14 +100,10 @@
       return b;
     };
 
-    // A plugin's card: its title (text and elements) and a line under it,
-    // its on/off switch beside them, and a footer with its options on the
-    // left and its buttons on the right.
-    const pluginRow = (title, subtitle, isError, buttons, { toggle = null, options = null } = {}) => {
+    // A list row: a title (text and elements), a line under it, and buttons.
+    const pluginRow = (title, subtitle, isError, buttons) => {
       const item = document.createElement("div");
-      item.className = "pluginItem";
-      const top = document.createElement("div");
-      top.className = "pluginTop";
+      item.className = "settingsRow pluginItem";
       const info = document.createElement("div");
       info.className = "settingsInfo";
       const name = document.createElement("div");
@@ -117,19 +113,12 @@
       sub.className = isError ? "settingsHint pluginError" : "settingsHint";
       sub.textContent = subtitle;
       info.append(name, sub);
-      top.append(info);
-      if (toggle) top.append(toggle);
-      const foot = document.createElement("div");
-      foot.className = "pluginFoot";
       const end = document.createElement("div");
-      end.className = "pluginButtons";
+      end.className = "settingsRowEnd";
       end.append(...buttons);
-      foot.append(options || document.createElement("div"), end);
-      item.append(top, foot);
+      item.append(info, end);
       return item;
     };
-    // A version beside a name, quieter than it.
-    const versionTag = (version) => Object.assign(document.createElement("span"), { className: "pluginVersion", textContent: version });
 
     // On: the plugin starts with the meter. Off: installed, but not running.
     const enabledSwitch = (p, on) => {
@@ -166,7 +155,7 @@
       for (const entry of offered) {
         const by = entry.author ? t("settings.plugins.by", "by {author}", { author: entry.author }) : "";
         catalogList.append(
-          pluginRow([entry.name, " ", versionTag(entry.version)], [entry.description, by].filter(Boolean).join(" · "), false, [
+          pluginRow([`${entry.name} ${entry.version}`], [entry.description, by].filter(Boolean).join(" · "), false, [
             button(t("settings.plugins.install", "Install"), () => install(entry, null)),
           ]),
         );
@@ -227,7 +216,7 @@
       devRow.hidden = !view.devMode;
       list.replaceChildren();
       for (const p of view.plugins || []) {
-        const title = p.error ? [p.name] : [p.name, " ", versionTag(p.version)];
+        const title = [p.error ? p.name : `${p.name} ${p.version}`];
         const wasUpdated = !p.error && updatedFrom.has(p.id);
         if (wasUpdated) {
           const from = updatedFrom.get(p.id);
@@ -251,6 +240,7 @@
         }
         const buttons = [];
         const on = !(view.disabled || []).includes(p.id);
+        if (!p.error) buttons.push(enabledSwitch(p, on));
         if (!p.error && on) {
           buttons.push(button(t("settings.plugins.open", "Open"), () => invoke("plugin_open", { id: p.id }).catch((e) => say(String(e)))));
         }
@@ -267,11 +257,11 @@
           if (p.reviewed) run(invoke("plugin_uninstall", { id: p.id })).then(loadCatalog);
           else run(invoke("plugin_remove_folder", { path: p.path }));
         }));
+        const item = pluginRow(title, p.error || p.description || p.path, !!p.error, buttons);
         // Its windows and widgets hidden while AION2 is closed, or with the
         // meter while AION2 isn't in front (off: an alert's icon stays up).
-        let options = null;
         if (!p.error && on) {
-          options = document.createElement("div");
+          const options = document.createElement("div");
           options.className = "pluginHideOptions";
           for (const [when, list, key, text] of [
             ["closed", view.hideClosed, "settings.plugins.hideClosed", "Hide while AION2 is closed"],
@@ -286,11 +276,8 @@
             hide.append(box, " ", t(key, text));
             options.append(hide);
           }
+          item.querySelector(".settingsInfo")?.append(options);
         }
-        const item = pluginRow(title, p.error || p.description || p.path, !!p.error, buttons, {
-          toggle: p.error ? null : enabledSwitch(p, on),
-          options,
-        });
         if (wasUpdated) item.classList.add("pluginUpdated");
         if (!p.error && !on) item.classList.add("pluginOff");
         list.append(item);

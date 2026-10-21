@@ -8015,7 +8015,8 @@ html.a2-offline .historyUploadBtn {
 }
 /* A plugin the last update check changed: a green arrow by its version. */
 .settingsPanel .pluginUpdated {
-  box-shadow: inset 3px 0 0 #4ade80;
+  box-shadow: inset 2px 0 0 #4ade80;
+  padding-left: 8px;
 }
 .settingsPanel .pluginUpdatedIcon,
 .settingsPanel .pluginUpdated svg {
@@ -8034,83 +8035,6 @@ html.a2-offline .historyUploadBtn {
 }
 .settingsPanel .pluginOff .settingsInfo {
   opacity: 0.5;
-}
-
-/* Each plugin is a card of its own: name, version and switch on top, its
-   description under them, its options and buttons in a footer. */
-.settingsPanel .pluginList,
-.settingsPanel .pluginCatalog {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 6px;
-}
-.settingsPanel .pluginList[hidden] {
-  display: none;
-}
-.settingsPanel .pluginItem {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
-  overflow: hidden;
-}
-.settingsPanel .pluginItem:hover {
-  border-color: rgba(255, 255, 255, 0.14);
-}
-.settingsPanel .pluginTop {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 10px 12px 8px;
-}
-.settingsPanel .pluginTop .settingsInfo {
-  flex: 1;
-  min-width: 0;
-}
-.settingsPanel .pluginTop .settingsLabel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 6px;
-  font-size: 13.5px;
-  font-variation-settings: "wght" 600, "wdth" 87.5;
-  color: #fff;
-}
-.settingsPanel .pluginTop .settingsHint {
-  margin-top: 3px;
-}
-.settingsPanel .pluginVersion {
-  padding: 0 5px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-variation-settings: "wght" 450, "wdth" 87.5;
-  color: rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.07);
-}
-.settingsPanel .pluginTop .pluginEnabledToggle {
-  flex: none;
-  margin: 1px 0 0;
-}
-.settingsPanel .pluginFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px 12px;
-  padding: 6px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.18);
-}
-.settingsPanel .pluginButtons {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-}
-.settingsPanel .pluginFoot .pluginHideClosed {
-  margin-top: 0;
-}
-.settingsPanel .pluginItem.pluginOff {
-  background: transparent;
 }
 
 /* Why a key is framed red, under its label. */
