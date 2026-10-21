@@ -114,28 +114,29 @@
       return i;
     };
 
-    // The reviewed plugins' icons (Lucide), by id. Any other plugin shows its
-    // first letter.
+    // The reviewed plugins' icons (Lucide) and colours (a hue), by id. Any
+    // other plugin shows its first letter.
     const OFFICIAL_ICONS = {
-      "pet-souls": "paw-print",
-      "event-timers": "alarm-clock",
-      ping: "activity",
-      cooldowns: "hourglass",
-      checklist: "list-checks",
-      "heal-alert": "heart-pulse",
-      "mantra-watch": "orbit",
-      "hidden-cubes": "box",
+      "pet-souls": ["paw-print", 25],
+      "event-timers": ["alarm-clock", 45],
+      ping: ["activity", 140],
+      cooldowns: ["hourglass", 265],
+      checklist: ["list-checks", 185],
+      "heal-alert": ["heart-pulse", 350],
+      "mantra-watch": ["orbit", 215],
+      "hidden-cubes": ["box", 300],
     };
 
-    // A square with the plugin's icon or first letter, its colour from its
-    // id, so a long list scans by shape and colour before reading.
+    // A square with the plugin's icon or first letter, in its colour (from
+    // its id when it has none), so a long list scans by shape and colour
+    // before reading.
     const mark = (id, name) => {
       let hash = 0;
       for (const ch of String(id)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-      const glyph = OFFICIAL_ICONS[id];
+      const [glyph, hue] = OFFICIAL_ICONS[id] || [];
       const m = el("span", "pluginMark", glyph ? null : (String(name || id).trim()[0] || "?").toUpperCase());
       if (glyph) m.append(icon(glyph));
-      m.style.setProperty("--mark-hue", String(hash % 360));
+      m.style.setProperty("--mark-hue", String(hue ?? hash % 360));
       m.setAttribute("aria-hidden", "true");
       return m;
     };
