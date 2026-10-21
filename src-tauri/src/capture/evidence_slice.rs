@@ -228,6 +228,16 @@ fn frame_packet(body: &[u8]) -> Option<Vec<u8>> {
 /// the fight window, so the prelude cannot carry another fight's numbers.
 const EVENT_OPCODES: &[[u8; 2]] = &[[0x04, 0x38], [0x05, 0x38], [0x1B, 0x92]];
 
+/// Buff changes (`2b 38`), kept from the lead-in on but not in the prelude.
+/// A change renews an instance the add (`2a 38`, kept) began, so the lead-in's
+/// changes still give each buff on at the pull with its start. In a crowd the
+/// prelude's changes were most of a slice: at a field boss (343 players, 13.5
+/// minutes before the pull) 510,125 changes, 24 of its 32 MiB, past what the
+/// log service reads (2026-10-21). On 14 fights of two captures the Buffs
+/// timeline came out as before; dropping adds and removals as well lost buffs
+/// put on before the lead-in.
+const PRELUDE_SKIPPED: &[[u8; 2]] = &[[0x2B, 0x38]];
+
 /// The opcodes the parser reads, and nothing else.
 ///
 /// Each entry is a leading opcode pair as it appears immediately after a
@@ -894,7 +904,7 @@ fn is_allowed(packet: &[u8], keep: Keep) -> bool {
         return false;
     }
     let op = [packet[o], packet[o + 1]];
-    if keep == Keep::State && EVENT_OPCODES.contains(&op) {
+    if keep == Keep::State && (EVENT_OPCODES.contains(&op) || PRELUDE_SKIPPED.contains(&op)) {
         return false;
     }
     ALLOWED_OPCODES.iter().any(|(allowed, _)| **allowed == op)
@@ -1522,6 +1532,15 @@ mod tests {
         assert!(!is_allowed(&damage, Keep::State));
         assert!(is_allowed(&damage, Keep::All));
         assert!(is_allowed(&spawn, Keep::State));
+    }
+
+    #[test]
+    fn the_prelude_carries_no_buff_changes() {
+        for op in PRELUDE_SKIPPED {
+            let buff = frame_packet(&[op[0], op[1], 0x01, 0x02, 0x03]).unwrap();
+            assert!(!is_allowed(&buff, Keep::State));
+            assert!(is_allowed(&buff, Keep::All));
+        }
     }
 
     fn hex(s: &str) -> Vec<u8> {
