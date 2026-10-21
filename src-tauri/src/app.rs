@@ -3321,11 +3321,13 @@ pub fn run() {
                     // and a rule added once and never again left the overlay
                     // taking the focus (a CachyOS player, 2026-10-19). The
                     // overlay takes no focus, so a click on it leaves the game
-                    // focused (#71); nor do plugins' icons.
-                    let rules: [(&str, fn(bool) -> Result<bool, String>); 3] = [
+                    // focused (#71); nor do plugins' icons. Plugin windows
+                    // stay above the game, so their alerts are seen.
+                    let rules: [(&str, fn(bool) -> Result<bool, String>); 4] = [
                         ("above", platform::window_rules::keep_above_fullscreen),
                         ("no-focus", platform::window_rules::click_without_focus),
                         ("icons", platform::window_rules::icons_without_focus),
+                        ("plugin windows", platform::window_rules::plugin_windows_above),
                     ];
                     for (name, ensure) in rules {
                         if let Err(e) = ensure(false) {

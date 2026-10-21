@@ -7,7 +7,7 @@ use std::process::Command;
 
 use crate::platform::kwin_rules::{
     general_entries_for, icons_rule_entries, is_kde, no_focus_rule_entries, order_only_entries, parse_version,
-    reads_order_only, rule_entries, GROUP, ICONS_GROUP, NO_FOCUS_GROUP,
+    plugin_windows_rule_entries, reads_order_only, rule_entries, GROUP, ICONS_GROUP, NO_FOCUS_GROUP, PLUGIN_WINDOWS_GROUP,
 };
 
 fn tool(names: &[&'static str]) -> Option<&'static str> {
@@ -87,12 +87,19 @@ pub fn icons_without_focus(done: bool) -> Result<bool, String> {
     add_rule(ICONS_GROUP, &icons_rule_entries(), done, "plugin icons keep the game focused")
 }
 
+/// Make sure plugin windows stay above a fullscreen game, so an alert one
+/// opens is seen.
+pub fn plugin_windows_above(done: bool) -> Result<bool, String> {
+    add_rule(PLUGIN_WINDOWS_GROUP, &plugin_windows_rule_entries(), done, "plugin windows stay above fullscreen games")
+}
+
 /// The meter's rules, each with its group, entries and what it does.
-fn rules() -> [(&'static str, Vec<(&'static str, &'static str)>, &'static str); 3] {
+fn rules() -> [(&'static str, Vec<(&'static str, &'static str)>, &'static str); 4] {
     [
         (GROUP, rule_entries(), "the meter stays above fullscreen games"),
         (NO_FOCUS_GROUP, no_focus_rule_entries(), "clicking the overlay keeps the game focused"),
         (ICONS_GROUP, icons_rule_entries(), "plugin icons keep the game focused"),
+        (PLUGIN_WINDOWS_GROUP, plugin_windows_rule_entries(), "plugin windows stay above fullscreen games"),
     ]
 }
 
