@@ -8248,12 +8248,24 @@ html.a2-offline .historyUploadBtn {
 .settingsPanel .pluginNoMatch[hidden] { display: none; }
 #settingsSection-plugins .pluginIntro { margin: 2px 0 6px; }
 
-/* One plugin: a single line until clicked, then its details under it. */
+/* One plugin: a single line until clicked, then a card with its details. */
 .settingsPanel .pluginItem {
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
 }
 .settingsPanel .pluginItem + .pluginItem { margin-top: 1px; }
-.settingsPanel .pluginItem.isOpen { background: rgba(255, 255, 255, 0.035); }
+.settingsPanel .pluginItem.isOpen {
+  margin: 6px 0;
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+.settingsPanel .pluginItem.isOpen .pluginHead {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px 6px 0 0;
+}
+.settingsPanel .pluginItem.isOpen .pluginHead:hover { background: none; }
+.settingsPanel .pluginItem.isOpen .pluginDetails { padding-top: 10px; }
 .settingsPanel .pluginHead {
   display: flex;
   align-items: center;
