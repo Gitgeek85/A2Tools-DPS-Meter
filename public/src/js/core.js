@@ -2978,7 +2978,9 @@ class DpsApp {
     }
     this.autoHideMeterCheckbox = document.querySelector(".autoHideMeterCheckbox");
     if (this.autoHideMeterCheckbox) {
-      const storedAutoHide = this.safeGetSetting(this.storageKeys.autoHideMeter) !== "false";
+      // Off unless turned on: the backend hides only on "true", so a box
+      // ticked by default showed auto-hide on while it was off.
+      const storedAutoHide = this.safeGetSetting(this.storageKeys.autoHideMeter) === "true";
       this.autoHideMeterCheckbox.checked = storedAutoHide;
       this.autoHideMeterCheckbox.addEventListener("change", (event) => {
         const isChecked = !!event.target?.checked;
@@ -4861,7 +4863,7 @@ class DpsApp {
     }
     for (const [box, name, defaultOn] of [
       [this.bossLogsCheckbox, "bossLogs", false],
-      [this.autoHideMeterCheckbox, "autoHideMeter", true],
+      [this.autoHideMeterCheckbox, "autoHideMeter", false],
       [this.hideWhenGameClosedCheckbox, "hideWhenGameClosed", false],
       [this.globalHotkeysCheckbox, "globalHotkeys", !document.documentElement?.classList?.contains?.("linux")],
       [this.saveRawPacketsCheckbox, "saveRawPackets", false],
