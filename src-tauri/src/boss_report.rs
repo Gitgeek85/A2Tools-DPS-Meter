@@ -270,8 +270,16 @@ fn spawn_events(app: tauri::AppHandle) {
                         .header(reqwest::header::CONTENT_TYPE, "application/json")
                         .body(body.to_string())
                         .timeout(Duration::from_secs(10));
-                    if let Err(e) = request.send().await {
-                        tracing::debug!("Boss timers: could not send HP ({path}): {e}");
+                    match request.send().await {
+                        // Refused: said, as nothing else would show it (an HP
+                        // bar that stayed full on Blooming Korin, 2026-10-22).
+                        Ok(res) if !res.status().is_success() => {
+                            let status = res.status();
+                            let why = res.text().await.unwrap_or_default();
+                            tracing::info!("Boss timers: HP refused ({path}, {status}): {}", why.chars().take(200).collect::<String>());
+                        }
+                        Ok(_) => {}
+                        Err(e) => tracing::debug!("Boss timers: could not send HP ({path}): {e}"),
                     }
                 }
             }

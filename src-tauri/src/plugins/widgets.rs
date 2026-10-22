@@ -59,12 +59,32 @@ fn widget_of(window: &tauri::WebviewWindow) -> Result<(String, String), String> 
 }
 
 /// The widgets of plugin `id` now open, by label.
-fn open_widgets(app: &tauri::AppHandle, id: &str) -> Vec<tauri::WebviewWindow> {
+/// Plugin `id`'s widget windows, the ones its plugin has closed included.
+fn all_widgets(app: &tauri::AppHandle, id: &str) -> Vec<tauri::WebviewWindow> {
     app.webview_windows()
         .into_iter()
         .filter(|(label, _)| parse_label(label).is_some_and(|(owner, _)| owner == id))
         .map(|(_, window)| window)
         .collect()
+}
+
+/// Plugin `id`'s open widgets: not the ones it closed.
+fn open_widgets(app: &tauri::AppHandle, id: &str) -> Vec<tauri::WebviewWindow> {
+    all_widgets(app, id).into_iter().filter(|w| !is_closed(w.label())).collect()
+}
+
+/// The widgets their plugin closed, by label. A closed widget's window is
+/// hidden and kept, so opening it again shows it at once: a new window and
+/// page took half a second or more (Ping's display, toggled, 2026-10-23).
+/// Nothing that brings hidden windows back shows one of these.
+fn closed() -> &'static Mutex<std::collections::HashSet<String>> {
+    static CLOSED: std::sync::OnceLock<Mutex<std::collections::HashSet<String>>> = std::sync::OnceLock::new();
+    CLOSED.get_or_init(Mutex::default)
+}
+
+/// Whether the widget window `label` is one its plugin closed.
+pub fn is_closed(label: &str) -> bool {
+    closed().lock().unwrap_or_else(|p| p.into_inner()).contains(label)
 }
 
 /// The part of each widget that takes the mouse, as its page reported it
@@ -131,18 +151,21 @@ pub fn saved_place(app: &tauri::AppHandle, id: &str, name: &str) -> Option<(i32,
 pub async fn plugin_widget_open(
     app: tauri::AppHandle,
     window: tauri::WebviewWindow,
+    plugin: Option<String>,
     name: String,
     width: f64,
     height: f64,
 ) -> Result<(), String> {
-    let id = window_plugin(&window)?;
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
+    tracing::debug!("Widgets: {id} opens {name:?} (from {})", window.label());
     if !valid_name(&name) {
         return Err("a widget name is 1 to 32 lowercase letters, digits and '-'".into());
     }
     let size = |v: f64| if v.is_finite() { v.clamp(24.0, 800.0) } else { 64.0 };
     let (width, height) = (size(width), size(height));
     if let Some(widget) = app.get_webview_window(&label(&id, &name)) {
+        closed().lock().unwrap_or_else(|p| p.into_inner()).remove(widget.label());
         crate::platform::window::set_size(&widget, tauri::LogicalSize::new(width, height).into());
         if super::game_hides(&app, &id) {
             super::hold_for_game(&widget);
@@ -152,8 +175,14 @@ pub async fn plugin_widget_open(
         apply_lock(&widget, is_locked(&app, &id));
         return Ok(());
     }
-    if open_widgets(&app, &id).len() >= MAX_WIDGETS {
-        return Err(format!("at most {MAX_WIDGETS} widgets"));
+    if all_widgets(&app, &id).len() >= MAX_WIDGETS {
+        // Room made by a closed one going for good, if there is one.
+        let Some(spare) = all_widgets(&app, &id).into_iter().find(|w| is_closed(w.label())) else {
+            return Err(format!("at most {MAX_WIDGETS} widgets"));
+        };
+        closed().lock().unwrap_or_else(|p| p.into_inner()).remove(spare.label());
+        areas().lock().unwrap_or_else(|p| p.into_inner()).remove(spare.label());
+        let _ = spare.destroy();
     }
     let plugin_name = host(&app)?.with(&id, |l| l.manifest.name.clone()).ok_or("no such plugin")?;
     let script = format!(
@@ -298,8 +327,8 @@ pub fn plugin_widget_area(app: tauri::AppHandle, window: tauri::WebviewWindow, x
 /// in physical screen pixels, and the work area of the screen it is on
 /// (`screen`, the same), or null when it is not open.
 #[tauri::command]
-pub fn plugin_widget_where(app: tauri::AppHandle, window: tauri::WebviewWindow, name: String) -> Result<Value, String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_widget_where(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, name: String) -> Result<Value, String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
     let Some(widget) = app.get_webview_window(&label(&id, &name)) else { return Ok(Value::Null) };
     let at = widget.outer_position().map_err(|e| e.to_string())?;
@@ -320,8 +349,8 @@ pub fn plugin_widget_where(app: tauri::AppHandle, window: tauri::WebviewWindow, 
 /// and lets no app move one after: an icon placed only once open stayed
 /// mid-screen there, Hirai 2026-10-19).
 #[tauri::command]
-pub fn plugin_widget_place(app: tauri::AppHandle, window: tauri::WebviewWindow, name: String, x: i32, y: i32) -> Result<(), String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_widget_place(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, name: String, x: i32, y: i32) -> Result<(), String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
     if !valid_name(&name) {
         return Err("a widget name is 1 to 32 lowercase letters, digits and '-'".into());
@@ -341,22 +370,24 @@ pub fn plugin_widget_place(app: tauri::AppHandle, window: tauri::WebviewWindow, 
     }
 }
 
-/// Close widget `name` of the calling plugin.
+/// Close widget `name` of the calling plugin: hidden and kept (`closed`),
+/// its page and place as they are, for opening it again at once.
 #[tauri::command]
-pub fn plugin_widget_close(app: tauri::AppHandle, window: tauri::WebviewWindow, name: String) -> Result<(), String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_widget_close(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, name: String) -> Result<(), String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
     if let Some(widget) = app.get_webview_window(&label(&id, &name)) {
-        areas().lock().unwrap_or_else(|p| p.into_inner()).remove(widget.label());
-        let _ = widget.close();
+        tracing::debug!("Widgets: {id} closes {name:?} (from {})", window.label());
+        closed().lock().unwrap_or_else(|p| p.into_inner()).insert(widget.label().to_string());
+        crate::platform::window::hide_in_place(&widget);
     }
     Ok(())
 }
 
 /// Hand widget `name` data from its plugin: it hears it as a "widget" event.
 #[tauri::command]
-pub fn plugin_widget_send(app: tauri::AppHandle, window: tauri::WebviewWindow, name: String, data: Value) -> Result<(), String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_widget_send(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, name: String, data: Value) -> Result<(), String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
     if data.to_string().len() > MAX_MESSAGE {
         return Err("message too large".into());
@@ -368,8 +399,8 @@ pub fn plugin_widget_send(app: tauri::AppHandle, window: tauri::WebviewWindow, n
 /// Lock (clicks go through, no moving) or unlock all the calling plugin's
 /// widgets. Kept across restarts.
 #[tauri::command]
-pub fn plugin_widgets_lock(app: tauri::AppHandle, window: tauri::WebviewWindow, locked: bool) -> Result<(), String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_widgets_lock(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, locked: bool) -> Result<(), String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
     if let Some(state) = app.try_state::<AppState>() {
         state.settings.set(&locked_key(&id), if locked { "true" } else { "false" });
@@ -384,8 +415,8 @@ pub fn plugin_widgets_lock(app: tauri::AppHandle, window: tauri::WebviewWindow, 
 
 /// Whether the calling plugin's widgets are locked.
 #[tauri::command]
-pub fn plugin_widgets_locked(app: tauri::AppHandle, window: tauri::WebviewWindow) -> Result<bool, String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_widgets_locked(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>) -> Result<bool, String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "widgets")?;
     Ok(is_locked(&app, &id))
 }
@@ -413,7 +444,8 @@ pub fn plugin_widget_post(app: tauri::AppHandle, window: tauri::WebviewWindow, d
         return Err("message too large".into());
     }
     let event = serde_json::json!({ "plugin": id, "event": "widget-message", "data": { "name": name, "data": data } });
-    app.emit_to(format!("plugin-{id}"), "plugin-event", event).map_err(|e| e.to_string())
+    super::emit_plugin(&app, &id, event);
+    Ok(())
 }
 
 /// Move the widget with the pointer, unless its plugin's widgets are locked.
@@ -438,7 +470,9 @@ pub fn any_unlocked_widget_shown(app: &tauri::AppHandle) -> bool {
 
 /// Close every widget of plugin `id`: its main window has gone.
 pub fn close_all(app: &tauri::AppHandle, id: &str) {
-    for widget in open_widgets(app, id) {
+    tracing::debug!("Widgets: {id}'s all closed (its window went)");
+    for widget in all_widgets(app, id) {
+        closed().lock().unwrap_or_else(|p| p.into_inner()).remove(widget.label());
         areas().lock().unwrap_or_else(|p| p.into_inner()).remove(widget.label());
         let _ = widget.close();
     }
@@ -464,7 +498,7 @@ pub fn note_moved(app: &tauri::AppHandle, label: &str, at: tauri::PhysicalPositi
             state.settings.set(&key, &format!("{x},{y}"));
         }
         let event = serde_json::json!({ "plugin": id, "event": "widget-moved", "data": { "name": name, "x": x, "y": y } });
-        let _ = app.emit_to(format!("plugin-{id}"), "plugin-event", event);
+        super::emit_plugin(&app, &id, event);
     });
 }
 

@@ -43,8 +43,8 @@ fn state() -> &'static Mutex<State> {
 /// Follow these bosses of `server` (replacing what the calling plugin followed
 /// there); none stops following.
 #[tauri::command]
-pub fn plugin_boss_follow(app: tauri::AppHandle, window: tauri::WebviewWindow, server: u32, bosses: Vec<String>) -> Result<(), String> {
-    let id = window_plugin(&window)?;
+pub fn plugin_boss_follow(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, server: u32, bosses: Vec<String>) -> Result<(), String> {
+    let id = window_plugin(&window, plugin.as_deref())?;
     require(&app, &id, "feed:boss-timers")?;
     if !(1000..10000).contains(&server) {
         return Err("not a server id".into());

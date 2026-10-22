@@ -14,6 +14,10 @@
       "ariaHps": "초당 힐량 표시 중",
       "ariaHeal": "총 힐량 표시 중",
       "ariaStagger": "보스 무력화 게이지에 준 피해 표시"
+    },
+    "updates": {
+      "meter": "A2Tools DPS Meter {version} 업데이트가 있습니다",
+      "plugins": "플러그인 업데이트: {list}"
     }
   },
   "details": {
@@ -123,7 +127,12 @@
       "deaths": "사망",
       "avgDps": "평균 DPS",
       "peakDps": "최고 DPS",
-      "peakDpsTip": "전투 중 5초 동안의 최고 DPS"
+      "peakDpsTip": "전투 중 5초 동안의 최고 DPS",
+      "blockedTaken": "방패 막기 (완벽)",
+      "blockedTakenTip": "받은 공격 중 방패로 막은 비율, 괄호 안은 완벽 막기",
+      "parriedTaken": "패리 (완벽)",
+      "parriedTakenTip": "받은 공격 중 패리한 비율, 괄호 안은 완벽 패리",
+      "parryRateTip": "내 공격 중 대상이 패리한 비율"
     },
     "titleFor": "대상",
     "titleVs": "vs",
@@ -305,6 +314,7 @@
     "showDpsSuffix": "DPS에 /s 붙이기",
     "autoHideMeter": "AION2가 활성 창이 아닐 때 숨기기",
     "hideWhenGameClosed": "AION2가 꺼져 있으면 숨기기",
+    "hideWhenSolo": "파티 중에만 표시",
     "showSuspendBtn": "수집 일시정지 버튼 표시",
     "showLockBtn": "클릭 통과 잠금 버튼 표시",
     "playerLimit": {
@@ -577,7 +587,8 @@
       "pluginDevMode": "이 컴퓨터의 폴더에서 플러그인을 불러와 만들고 시험할 수 있습니다. 검토되지 않은 플러그인이므로 신뢰할 수 있는 것만 불러오세요.",
       "showMeter": "끄면 플러그인만 표시됩니다. 미터는 백그라운드에서 전투 기록과 업로드를 계속합니다. 여기, 표시/숨기기 단축키, 또는 플러그인 창의 미터 버튼으로 다시 켤 수 있습니다.",
       "clearOnZone": "지역이 바뀐 뒤 마지막 전투를 미터에서 지우는 시점입니다. 모든 전투는 어느 쪽이든 기록에 남습니다.",
-      "hideWhenGameClosed": "게임이 실행 중이 아닐 때 미터를 숨기고, 게임이 시작되면 다시 보여 줍니다."
+      "hideWhenGameClosed": "게임이 실행 중이 아닐 때 미터를 숨기고, 게임이 시작되면 다시 보여 줍니다.",
+      "hideWhenSolo": "파티에 속해 있지 않을 때 미터를 숨기고, 파티에 들어가면 다시 보여 줍니다. 표시/숨기기 단축키로 언제든 띄울 수 있습니다."
     },
     "globalHotkeys": "단축키 사용",
     "hotkeyConsent": {
@@ -638,6 +649,7 @@
       "showMeter": "DPS 미터 표시",
       "hideClosed": "AION2가 꺼져 있으면 숨기기",
       "hideUnfocused": "AION2가 활성 창이 아닐 때 숨기기",
+      "inDock": "플러그인 독에 넣기 (끄면: 별도 창)",
       "search": "검색",
       "noMatch": "일치하는 플러그인이 없습니다.",
       "permsTitle": "할 수 있는 일:"
@@ -781,5 +793,22 @@
     "alsoAsks": "새 버전은 다음 권한도 요청합니다:",
     "updateNow": "지금 업데이트할까요?",
     "failed": "업데이트하지 못했습니다:"
+  },
+  "pluginDock": {
+    "tabs": "플러그인을 탭으로 보기",
+    "stack": "플러그인을 세로로 쌓기",
+    "fold": "독 접기",
+    "unfold": "독 펼치기",
+    "hideControls": "조작 버튼 숨기기",
+    "showControls": "조작 버튼 보이기",
+    "popOut": "별도 창으로 열기",
+    "pluginSettings": "플러그인 설정",
+    "hide": "숨기기 (플러그인은 계속 실행됩니다)",
+    "close": "독 숨기기 (플러그인은 계속 실행됩니다)",
+    "hideMeter": "DPS 미터 숨기기",
+    "showMeter": "DPS 미터 보이기",
+    "settings": "미터 설정",
+    "opacity": "배경 불투명도",
+    "failed": "이 플러그인을 시작할 수 없습니다: {error}"
   }
 }

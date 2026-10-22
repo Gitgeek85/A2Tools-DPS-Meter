@@ -126,6 +126,7 @@ class DpsApp {
       font: "dpsMeter.font",
       autoHideMeter: "dpsMeter.autoHideMeter",
       hideWhenGameClosed: "dpsMeter.hideWhenGameClosed",
+      hideWhenSolo: "dpsMeter.hideWhenSolo",
       globalHotkeys: "dpsMeter.globalHotkeys",
       bossLogs: "dpsMeter.bossLogsEnabled",
       saveRawPackets: "dpsMeter.saveRawPackets",
@@ -370,6 +371,7 @@ class DpsApp {
 
     this.resetBtn = document.querySelector(".resetBtn");
     this.suspendBtn = document.querySelector(".suspendBtn");
+    this.updatesBtn = document.querySelector(".updatesBtn");
     this.lockBtn = document.querySelector(".lockBtn");
     this.headerBtns = document.querySelector(".headerBtns");
     this.targetModeBtn = document.querySelector(".footerBtns .targetModeBtn");
@@ -647,7 +649,7 @@ class DpsApp {
     // Not in the private build, which checks for nothing (build_features).
     if (window.A2_VIEW === "main") {
       Promise.resolve(window.a2BuildReady).then((build) => {
-        if (build?.online !== false) window.ReleaseChecker?.start?.();
+        if (build?.online !== false) this.setupUpdatesButton();
       });
     }
     this.setupConsoleDebugging();
@@ -682,6 +684,63 @@ class DpsApp {
       this.startWindowTitlePolling();
       this.fetchDps();
     }
+  }
+
+  // The green button in the title: shown while a meter update or plugin
+  // updates are waiting, in place of a window popping up over the game at
+  // start. A click asks about each, as those windows did.
+  setupUpdatesButton() {
+    const btn = this.updatesBtn;
+    if (!btn) return;
+    const invoke = window.__TAURI__?.core?.invoke;
+    const found = { meter: null, plugins: [] };
+    const render = () => {
+      const lines = [];
+      if (found.meter) {
+        lines.push(window.i18n?.format?.("header.updates.meter", { version: found.meter }, `A2Tools DPS Meter ${found.meter} is available`)
+          ?? `A2Tools DPS Meter ${found.meter} is available`);
+      }
+      if (found.plugins.length) {
+        const list = found.plugins.map((u) => `${u.name} ${u.to}`).join(", ");
+        lines.push(window.i18n?.format?.("header.updates.plugins", { list }, `Plugin updates: ${list}`)
+          ?? `Plugin updates: ${list}`);
+      }
+      btn.hidden = !lines.length;
+      const tip = lines.join("\n");
+      btn.title = tip;
+      btn.setAttribute("aria-label", tip);
+    };
+    window.ReleaseChecker?.start?.((latest) => {
+      found.meter = latest;
+      render();
+    });
+    const takePlugins = (list) => {
+      found.plugins = Array.isArray(list) ? list : [];
+      render();
+    };
+    window.__TAURI__?.event?.listen?.("plugin-updates", (e) => takePlugins(e.payload));
+    invoke?.("plugin_pending_updates").then(takePlugins).catch(() => {});
+    this.i18n?.onChange?.(render);
+    let busy = false;
+    btn.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        if (found.meter) {
+          // Installing closes the meter; declined, the button stays.
+          if (await window.ReleaseChecker?.offer?.()) found.meter = null;
+        }
+        if (found.plugins.length) {
+          await invoke?.("plugin_offer_updates");
+          found.plugins = [];
+        }
+      } catch (e) {
+        console.error("[A2Tools] Update offer failed:", e);
+      } finally {
+        busy = false;
+        render();
+      }
+    });
   }
 
   bindNativeHotkeyBridge() {
@@ -1808,6 +1867,12 @@ class DpsApp {
         if (next) show(next.dataset.section, { focus: true });
       });
     }
+    // Opened on one section (the plugin dock's Settings button), or told to
+    // switch to it while open.
+    const known = (key) => typeof key === "string" && items.some((item) => item.dataset.section === key);
+    const invoke = window.__TAURI__?.core?.invoke;
+    invoke?.("take_settings_section").then((key) => { if (known(key)) show(key); }).catch(() => {});
+    window.__TAURI__?.event?.listen?.("settings-section", (event) => { if (known(event.payload)) show(event.payload); });
   }
 
   normalizeBarGap(value) {
@@ -2933,7 +2998,8 @@ class DpsApp {
     // The Supply Requests boards, shared with Profiteer (supply_report.rs):
     // on unless turned off.
     if (this.shareSupplyRequestsCheckbox) {
-      this.shareSupplyRequestsCheckbox.checked = this.safeGetSetting(this.storageKeys.shareSupplyRequests) !== "false";
+      // Off unless turned on.
+      this.shareSupplyRequestsCheckbox.checked = this.safeGetSetting(this.storageKeys.shareSupplyRequests) === "true";
       this.shareSupplyRequestsCheckbox.addEventListener("change", (event) => {
         this.safeSetSetting(this.storageKeys.shareSupplyRequests, event.target?.checked ? "true" : "false");
       });
@@ -3098,6 +3164,14 @@ class DpsApp {
       this.hideWhenGameClosedCheckbox.checked = this.safeGetSetting(this.storageKeys.hideWhenGameClosed) === "true";
       this.hideWhenGameClosedCheckbox.addEventListener("change", (event) => {
         this.safeSetSetting(this.storageKeys.hideWhenGameClosed, String(!!event.target?.checked));
+      });
+    }
+    // And while not in a party (the same loop).
+    this.hideWhenSoloCheckbox = document.querySelector(".hideWhenSoloCheckbox");
+    if (this.hideWhenSoloCheckbox) {
+      this.hideWhenSoloCheckbox.checked = this.safeGetSetting(this.storageKeys.hideWhenSolo) === "true";
+      this.hideWhenSoloCheckbox.addEventListener("change", (event) => {
+        this.safeSetSetting(this.storageKeys.hideWhenSolo, String(!!event.target?.checked));
       });
     }
     // Suspend button setting
@@ -5059,6 +5133,7 @@ class DpsApp {
       [this.bossLogsCheckbox, "bossLogs", false],
       [this.autoHideMeterCheckbox, "autoHideMeter", false],
       [this.hideWhenGameClosedCheckbox, "hideWhenGameClosed", false],
+      [this.hideWhenSoloCheckbox, "hideWhenSolo", false],
       [this.globalHotkeysCheckbox, "globalHotkeys", !document.documentElement?.classList?.contains?.("linux")],
       [this.saveRawPacketsCheckbox, "saveRawPackets", false],
       [document.querySelector(".discordActivityCheckbox"), "discordActivity", false],
@@ -5354,6 +5429,8 @@ class DpsApp {
     const normalized = this.availableThemes.includes(themeId) ? themeId : this.availableThemes[0];
     this.theme = normalized;
     document.documentElement.dataset.theme = normalized;
+    // The "meter" Settings colours take this theme's accent.
+    this.sharePluginTheme();
     if (this.settingsSelections) {
       this.settingsSelections.theme = normalized;
     }
@@ -5388,6 +5465,39 @@ class DpsApp {
     if (this.settingsSelections) this.settingsSelections.settingsTheme = normalized;
     this.syncSettingsDropdownSelection(this.settingsThemeDropdownBtn, this.settingsThemeDropdownMenu, normalized);
     if (persist) this.safeSetSetting(this.storageKeys.settingsTheme, normalized);
+    this.sharePluginTheme();
+  }
+
+  // Plugin windows take the Settings colours (their panel, title bar and
+  // controls): read as this window shows them, as #rrggbb, and handed to the
+  // meter, which keeps them and tells the plugins. Only the Settings window
+  // has them; the meter skips a theme it already has.
+  sharePluginTheme() {
+    const root = document.documentElement;
+    if (!root.classList.contains("settingsWindow")) return;
+    clearTimeout(this._pluginThemeTimer);
+    this._pluginThemeTimer = setTimeout(() => {
+      const hex = (value) => {
+        const probe = document.createElement("span");
+        probe.style.color = value;
+        if (!probe.style.color) return "";
+        probe.style.display = "none";
+        document.body.appendChild(probe);
+        const rgba = getComputedStyle(probe).color.match(/[\d.]+/g) || [];
+        probe.remove();
+        if (rgba.length < 3 || (rgba.length > 3 && Number(rgba[3]) === 0)) return "";
+        return `#${rgba.slice(0, 3).map((n) => Number(n).toString(16).padStart(2, "0")).join("")}`;
+      };
+      const css = getComputedStyle(root);
+      const read = (name) => hex(css.getPropertyValue(name).trim());
+      const bg = read("--settings-bg") || "#0a0e16";
+      const theme = {
+        bg,
+        panel: read("--settings-nav-bg") || bg,
+        accent: read("--settings-accent") || read("--isUser-fill") || "#8fc2ff",
+      };
+      window.__TAURI__?.core?.invoke?.("set_plugin_theme", { theme })?.catch?.(() => {});
+    }, 0);
   }
 
   /** The display modes after DPS, in the button's cycle, as Settings allow. */

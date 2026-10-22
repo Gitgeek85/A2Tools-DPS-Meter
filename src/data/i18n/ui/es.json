@@ -14,6 +14,10 @@
       "ariaHps": "Mostrando curación por segundo",
       "ariaHeal": "Mostrando curación total",
       "ariaStagger": "Mostrando el aturdimiento infligido a la barra del jefe"
+    },
+    "updates": {
+      "meter": "A2Tools DPS Meter {version} está disponible",
+      "plugins": "Actualizaciones de plugins: {list}"
     }
   },
   "details": {
@@ -123,7 +127,12 @@
       "deaths": "Muertes",
       "avgDps": "DPS medio",
       "peakDps": "DPS máximo",
-      "peakDpsTip": "El DPS más alto en cualquier tramo de 5 segundos del combate"
+      "peakDpsTip": "El DPS más alto en cualquier tramo de 5 segundos del combate",
+      "blockedTaken": "Bloqueado (Perfecto)",
+      "blockedTakenTip": "De los golpes recibidos: bloqueados con escudo y, entre paréntesis, bloqueados a la perfección",
+      "parriedTaken": "Desviado (Perfecto)",
+      "parriedTakenTip": "De los golpes recibidos: desviados y, entre paréntesis, desviados a la perfección",
+      "parryRateTip": "De tus golpes: la parte que el objetivo desvió"
     },
     "titleFor": "de",
     "titleVs": "contra",
@@ -300,6 +309,7 @@
     "showDpsSuffix": "Añadir /s al DPS",
     "autoHideMeter": "Ocultar cuando AION2 no está activo",
     "hideWhenGameClosed": "Ocultar mientras AION2 está cerrado",
+    "hideWhenSolo": "Mostrar solo en grupo",
     "showSuspendBtn": "Mostrar botón de pausar captura",
     "showLockBtn": "Mostrar botón de bloqueo (clic a través)",
     "playerLimit": {
@@ -570,7 +580,8 @@
       "pluginDevMode": "Carga complementos desde carpetas de este equipo, para crearlos y probarlos. No están revisados, así que carga solo los que sean de confianza.",
       "showMeter": "Desactivado: solo se ven tus plugins. El medidor sigue registrando combates y subiéndolos en segundo plano. Vuelve a mostrarlo aquí, con el atajo de mostrar/ocultar o con el botón del medidor en una ventana de plugin.",
       "clearOnZone": "Cuándo desaparece el último combate del medidor tras un cambio de zona. Todos los combates quedan en el Historial igualmente.",
-      "hideWhenGameClosed": "El medidor se oculta mientras el juego no está abierto y vuelve cuando se inicia."
+      "hideWhenGameClosed": "El medidor se oculta mientras el juego no está abierto y vuelve cuando se inicia.",
+      "hideWhenSolo": "El medidor se oculta mientras no estás en un grupo y vuelve cuando te unes a uno. El atajo de mostrar/ocultar lo sigue mostrando."
     },
     "globalHotkeys": "Usar atajos de teclado",
     "hotkeyConsent": {
@@ -631,6 +642,7 @@
       "showMeter": "Mostrar el medidor de DPS",
       "hideClosed": "Ocultar mientras AION2 está cerrado",
       "hideUnfocused": "Ocultar cuando AION2 no está activo",
+      "inDock": "En el dock de plugins (desactivado: su propia ventana)",
       "search": "Buscar",
       "noMatch": "Ningún plugin coincide.",
       "permsTitle": "Puede:"
@@ -774,5 +786,22 @@
     "alsoAsks": "La nueva versión también pide:",
     "updateNow": "¿Actualizar ahora?",
     "failed": "No se pudo actualizar:"
+  },
+  "pluginDock": {
+    "tabs": "Mostrar los plugins en pestañas",
+    "stack": "Apilar los plugins",
+    "fold": "Plegar el dock",
+    "unfold": "Desplegar el dock",
+    "hideControls": "Ocultar los controles",
+    "showControls": "Mostrar los controles",
+    "popOut": "Abrir en su propia ventana",
+    "pluginSettings": "Ajustes de plugins",
+    "hide": "Ocultar (el plugin sigue funcionando)",
+    "close": "Ocultar el dock (los plugins siguen funcionando)",
+    "hideMeter": "Ocultar el medidor de DPS",
+    "showMeter": "Mostrar el medidor de DPS",
+    "settings": "Ajustes del medidor",
+    "opacity": "Opacidad del fondo",
+    "failed": "Este plugin no pudo iniciarse: {error}"
   }
 }

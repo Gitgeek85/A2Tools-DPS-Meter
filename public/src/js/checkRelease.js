@@ -20,7 +20,9 @@
   // One check: "installing" (accepted in the update window), "update" (one
   // is out: declined, or this install's package manager updates it),
   // "current" or "failed". `latest`: the newest version, when known.
-  const check = async () => {
+  // `ask` false: no window; "offer" when this install can take the update,
+  // kept for `offer` (the green button in the meter's title).
+  const check = async ({ ask = true } = {}) => {
     // Wait for the bridge AND for the async version fetch to complete
     for (
       let i = 0;
@@ -68,7 +70,7 @@
     if (!hasUpdate) return { state: "current", latest };
 
     console.log("[A2Tools] Update available:", current, "->", latest);
-    const accepted = await window.__TAURI__.core.invoke("show_update_window", {
+    const args = {
       current,
       latest,
       msiUrl: result.msi,
@@ -79,22 +81,43 @@
       archSha256: result.hashes.arch,
       debSha256: result.hashes.deb,
       rpmSha256: result.hashes.rpm,
-    });
+    };
+    if (!ask) {
+      const offered = await window.__TAURI__.core.invoke("show_update_window", { ...args, ask: false });
+      if (!offered) return { state: "update", latest };
+      pending = args;
+      return { state: "offer", latest };
+    }
+    const accepted = await window.__TAURI__.core.invoke("show_update_window", args);
     return { state: accepted ? "installing" : "update", latest };
   };
 
   let once = false;
+  // The update found at start, for the title's button to offer.
+  let pending = null;
 
-  const start = () =>
+  // At start nothing pops up: an update this install can take shows the
+  // green button in the meter's title (`onAvailable`), which asks.
+  const start = (onAvailable) =>
     setTimeout(async () => {
       try {
         if (once) return;
         once = true;
-        await check();
+        const found = await check({ ask: false });
+        if (found.state === "offer") onAvailable?.(found.latest);
       } catch (e) {
         console.error("[A2Tools] Update check error:", e);
       }
     }, START_DELAY);
+
+  // The button: the update window for the update found at start. True when
+  // it is installing.
+  const offer = async () => {
+    if (!pending) return false;
+    const accepted = await window.__TAURI__.core.invoke("show_update_window", pending);
+    if (accepted) pending = null;
+    return accepted;
+  };
 
   // Settings' check: whenever asked, with what it found.
   const checkNow = () =>
@@ -103,5 +126,5 @@
       return { state: "failed" };
     });
 
-  window.ReleaseChecker = { start, checkNow };
+  window.ReleaseChecker = { start, checkNow, offer };
 })();

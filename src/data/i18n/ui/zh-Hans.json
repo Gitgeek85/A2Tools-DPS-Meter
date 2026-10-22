@@ -14,6 +14,10 @@
       "ariaHps": "显示每秒治疗量",
       "ariaHeal": "显示总治疗量",
       "ariaStagger": "显示对首领破防条造成的削减"
+    },
+    "updates": {
+      "meter": "A2Tools DPS Meter {version} 可更新",
+      "plugins": "插件更新：{list}"
     }
   },
   "details": {
@@ -123,7 +127,12 @@
       "deaths": "死亡次数",
       "avgDps": "平均 DPS",
       "peakDps": "峰值 DPS",
-      "peakDpsTip": "战斗中任意 5 秒内的最高 DPS"
+      "peakDpsTip": "战斗中任意 5 秒内的最高 DPS",
+      "blockedTaken": "盾挡（完美）",
+      "blockedTakenTip": "受到的攻击中用盾牌挡下的比例，括号内为完美盾挡",
+      "parriedTaken": "格挡（完美）",
+      "parriedTakenTip": "受到的攻击中格挡的比例，括号内为完美格挡",
+      "parryRateTip": "你的攻击中被目标格挡的比例"
     },
     "titleFor": "针对",
     "titleVs": "vs",
@@ -305,6 +314,7 @@
     "showDpsSuffix": "DPS 后显示 /s",
     "autoHideMeter": "AION2 不在前台时隐藏",
     "hideWhenGameClosed": "AION2 关闭时隐藏",
+    "hideWhenSolo": "仅在队伍中显示",
     "showSuspendBtn": "显示暂停捕获按钮",
     "showLockBtn": "显示点击穿透锁定按钮",
     "playerLimit": {
@@ -577,7 +587,8 @@
       "pluginDevMode": "从这台电脑上的文件夹加载插件，用于开发和测试。这些插件未经审核，请只加载你信任的插件。",
       "showMeter": "关闭：只显示插件。统计仍在后台记录战斗并上传。可在此处、用显示/隐藏快捷键，或插件窗口上的统计按钮重新显示。",
       "clearOnZone": "切换区域后，何时从统计中清除上一场战斗。所有战斗都会保留在历史记录中。",
-      "hideWhenGameClosed": "游戏未运行时隐藏计量器，游戏启动后再次显示。"
+      "hideWhenGameClosed": "游戏未运行时隐藏计量器，游戏启动后再次显示。",
+      "hideWhenSolo": "不在队伍中时隐藏计量器，加入队伍后再次显示。显示/隐藏快捷键仍可随时打开它。"
     },
     "globalHotkeys": "使用快捷键",
     "hotkeyConsent": {
@@ -638,6 +649,7 @@
       "showMeter": "显示 DPS 统计",
       "hideClosed": "AION2 关闭时隐藏",
       "hideUnfocused": "AION2 不在前台时隐藏",
+      "inDock": "放入插件停靠栏（关闭：单独窗口）",
       "search": "搜索",
       "noMatch": "没有匹配的插件。",
       "permsTitle": "可以:"
@@ -781,5 +793,22 @@
     "alsoAsks": "新版本还要求：",
     "updateNow": "现在更新吗？",
     "failed": "无法更新："
+  },
+  "pluginDock": {
+    "tabs": "以标签页显示插件",
+    "stack": "堆叠显示插件",
+    "fold": "收起停靠栏",
+    "unfold": "展开停靠栏",
+    "hideControls": "隐藏控件",
+    "showControls": "显示控件",
+    "popOut": "在单独窗口中打开",
+    "pluginSettings": "插件设置",
+    "hide": "隐藏（插件继续运行）",
+    "close": "隐藏停靠栏（插件继续运行）",
+    "hideMeter": "隐藏 DPS 计量器",
+    "showMeter": "显示 DPS 计量器",
+    "settings": "计量器设置",
+    "opacity": "背景不透明度",
+    "failed": "此插件无法启动：{error}"
   }
 }

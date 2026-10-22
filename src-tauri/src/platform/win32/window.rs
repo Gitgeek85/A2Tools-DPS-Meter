@@ -195,3 +195,8 @@ pub fn is_hidden_in_place(_window: &tauri::WebviewWindow) -> bool {
 pub fn reveal_in_place(_window: &tauri::WebviewWindow) -> bool {
     false
 }
+
+/// Whether a tray icon can be shown: always, in the notification area.
+pub fn tray_supported() -> bool {
+    true
+}

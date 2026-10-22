@@ -14,6 +14,10 @@
       "ariaHps": "顯示每秒治療量",
       "ariaHeal": "顯示總治療量",
       "ariaStagger": "顯示對首領破防條造成的削減"
+    },
+    "updates": {
+      "meter": "A2Tools DPS Meter {version} 可更新",
+      "plugins": "外掛更新：{list}"
     }
   },
   "details": {
@@ -123,7 +127,12 @@
       "deaths": "死亡次數",
       "avgDps": "平均 DPS",
       "peakDps": "峰值 DPS",
-      "peakDpsTip": "戰鬥中任意 5 秒內的最高 DPS"
+      "peakDpsTip": "戰鬥中任意 5 秒內的最高 DPS",
+      "blockedTaken": "盾擋（完美）",
+      "blockedTakenTip": "受到的攻擊中以盾牌擋下的比例，括號內為完美盾擋",
+      "parriedTaken": "格擋（完美）",
+      "parriedTakenTip": "受到的攻擊中格擋的比例，括號內為完美格擋",
+      "parryRateTip": "你的攻擊中被目標格擋的比例"
     },
     "titleFor": "針對",
     "titleVs": "vs",
@@ -305,6 +314,7 @@
     "showDpsSuffix": "DPS 後顯示 /s",
     "autoHideMeter": "AION2 不在前景時隱藏",
     "hideWhenGameClosed": "AION2 關閉時隱藏",
+    "hideWhenSolo": "僅在隊伍中顯示",
     "showSuspendBtn": "顯示暫停擷取按鈕",
     "showLockBtn": "顯示點擊穿透鎖定按鈕",
     "playerLimit": {
@@ -577,7 +587,8 @@
       "pluginDevMode": "從這台電腦上的資料夾載入外掛程式，用於開發和測試。這些外掛程式未經審核，請只載入你信任的外掛程式。",
       "showMeter": "關閉：只顯示外掛。統計仍在背景記錄戰鬥並上傳。可在此處、用顯示/隱藏快速鍵，或外掛視窗上的統計按鈕重新顯示。",
       "clearOnZone": "切換區域後，何時從統計中清除上一場戰鬥。所有戰鬥都會保留在歷史紀錄中。",
-      "hideWhenGameClosed": "遊戲未執行時隱藏計量器，遊戲啟動後再次顯示。"
+      "hideWhenGameClosed": "遊戲未執行時隱藏計量器，遊戲啟動後再次顯示。",
+      "hideWhenSolo": "不在隊伍中時隱藏計量器，加入隊伍後再次顯示。顯示/隱藏快捷鍵仍可隨時開啟它。"
     },
     "globalHotkeys": "使用快捷鍵",
     "hotkeyConsent": {
@@ -638,6 +649,7 @@
       "showMeter": "顯示 DPS 統計",
       "hideClosed": "AION2 關閉時隱藏",
       "hideUnfocused": "AION2 不在前景時隱藏",
+      "inDock": "放入外掛停靠欄（關閉：獨立視窗）",
       "search": "搜尋",
       "noMatch": "沒有符合的外掛。",
       "permsTitle": "可以:"
@@ -781,5 +793,22 @@
     "alsoAsks": "新版本還要求：",
     "updateNow": "現在更新嗎？",
     "failed": "無法更新："
+  },
+  "pluginDock": {
+    "tabs": "以分頁顯示外掛",
+    "stack": "堆疊顯示外掛",
+    "fold": "收合停靠欄",
+    "unfold": "展開停靠欄",
+    "hideControls": "隱藏控制項",
+    "showControls": "顯示控制項",
+    "popOut": "在獨立視窗中開啟",
+    "pluginSettings": "外掛程式設定",
+    "hide": "隱藏（外掛繼續執行）",
+    "close": "隱藏停靠欄（外掛繼續執行）",
+    "hideMeter": "隱藏 DPS 計量器",
+    "showMeter": "顯示 DPS 計量器",
+    "settings": "計量器設定",
+    "opacity": "背景不透明度",
+    "failed": "此外掛無法啟動：{error}"
   }
 }

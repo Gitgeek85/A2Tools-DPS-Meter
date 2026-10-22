@@ -69,6 +69,9 @@ pub fn no_focus_rule_entries() -> Vec<(&'static str, &'static str)> {
         ("titlematch", "1"),
         ("acceptfocus", "false"),
         ("acceptfocusrule", "2"),
+        // Out of Alt+Tab: it takes no focus, so switching to it did nothing.
+        ("skipswitcher", "true"),
+        ("skipswitcherrule", "2"),
     ]
 }
 
@@ -99,6 +102,13 @@ pub fn icons_rule_entries() -> Vec<(&'static str, &'static str)> {
         ("layerrule", "2"),
         ("above", "true"),
         ("aboverule", "2"),
+        // Out of Alt+Tab and the taskbar: one entry per icon cluttered both
+        // (Hirai, 2026-10-22), and GTK's skip-taskbar does nothing on
+        // native Wayland.
+        ("skipswitcher", "true"),
+        ("skipswitcherrule", "2"),
+        ("skiptaskbar", "true"),
+        ("skiptaskbarrule", "2"),
     ]
 }
 
@@ -126,6 +136,10 @@ pub fn plugin_windows_rule_entries() -> Vec<(&'static str, &'static str)> {
         ("layerrule", "2"),
         ("above", "true"),
         ("aboverule", "2"),
+        // Out of Alt+Tab, which they cluttered (Hirai, 2026-10-22); still
+        // in the taskbar, the way back to one hidden off screen.
+        ("skipswitcher", "true"),
+        ("skipswitcherrule", "2"),
     ]
 }
 
@@ -271,6 +285,19 @@ mod tests {
         assert_eq!((value("layer"), value("layerrule")), (Some("overlay"), Some("2")));
         assert_eq!(value("acceptfocus"), None);
         assert_eq!(value("wmclass"), Some(WINDOW_CLASS_MATCH));
+        assert_eq!((value("skipswitcher"), value("skipswitcherrule")), (Some("true"), Some("2")));
+        assert_eq!(value("skiptaskbar"), None, "the taskbar still finds a plugin window");
+    }
+
+    /// The overlay and plugins' icons stay out of Alt+Tab; icons out of the
+    /// taskbar too.
+    #[test]
+    fn the_overlay_and_icons_stay_out_of_alt_tab() {
+        let value = |rule: &[(&str, &'static str)], k: &str| rule.iter().find(|(key, _)| *key == k).map(|(_, v)| *v);
+        let (overlay, icons) = (no_focus_rule_entries(), icons_rule_entries());
+        assert_eq!((value(&overlay, "skipswitcher"), value(&overlay, "skipswitcherrule")), (Some("true"), Some("2")));
+        assert_eq!((value(&icons, "skipswitcher"), value(&icons, "skiptaskbar")), (Some("true"), Some("true")));
+        assert_eq!(value(&icons, "skiptaskbarrule"), Some("2"));
     }
 
     /// KWin reads `rules`: a list left only in `Order` (as 2.0.73 left it)

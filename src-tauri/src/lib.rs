@@ -34,6 +34,8 @@ pub mod logging;
 pub mod platform;
 #[cfg(feature = "desktop")]
 pub mod plugins;
+#[cfg(feature = "desktop")]
+mod tray;
 #[cfg(feature = "online")]
 mod boss_report;
 #[cfg(feature = "online")]

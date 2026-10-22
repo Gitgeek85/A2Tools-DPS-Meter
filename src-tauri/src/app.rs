@@ -155,7 +155,7 @@ fn set_meter_wanted(app: &tauri::AppHandle, shown: bool) {
 pub(crate) fn way_back_without(app: &tauri::AppHandle, except: &str) -> bool {
     meter_wanted(app)
         || app.webview_windows().into_iter().any(|(label, w)| {
-            label != except && label.starts_with("plugin-")
+            label != except && crate::plugins::is_plugin_window(&label)
                 && w.is_visible().unwrap_or(false) && !platform::window::is_hidden_in_place(&w)
         })
         || crate::plugins::widgets::any_unlocked_widget_shown(app)
@@ -223,6 +223,10 @@ fn hide_with_meter(app: &tauri::AppHandle, hidden: &mut std::collections::HashSe
 fn show_with_meter(app: &tauri::AppHandle, hidden: &mut std::collections::HashSet<String>) {
     for label in hidden.drain() {
         let Some(window) = app.get_webview_window(&label) else { continue };
+        // A widget its plugin closed meanwhile stays hidden.
+        if crate::plugins::widgets::is_closed(&label) {
+            continue;
+        }
         if !platform::window::reveal_in_place(&window) {
             platform::window::show_on_top_without_focus(&window);
         }
@@ -329,7 +333,7 @@ fn screenshot_tool(app: &tauri::AppHandle, in_front: bool) {
     crate::plugins::widgets::reapply_locks(app);
     // Settings, History, Details, and plugins' windows: all or nothing.
     for (label, window) in app.webview_windows() {
-        let tool = TOOL_WINDOWS.contains(&label.as_str()) || label.starts_with("details-") || label.starts_with("plugin-");
+        let tool = TOOL_WINDOWS.contains(&label.as_str()) || label.starts_with("details-") || crate::plugins::is_plugin_window(&label);
         if tool && !platform::window::click_through_except(&window, in_front, None) && !cfg!(target_os = "linux") {
             let _ = window.set_ignore_cursor_events(in_front);
         }
@@ -962,6 +966,33 @@ fn hotkey_of(settings: &Settings, key: &str) -> (u32, u32) {
 }
 
 /// Register the hotkeys from saved settings (or defaults).
+/// Show or hide the meter, and remember it (as Settings → Plugins → Show
+/// the DPS meter does): its keybind and the tray's. Hidden by auto-hide
+/// only, it is shown, as before, and nothing changes.
+pub(crate) fn toggle_meter(app: &tauri::AppHandle) {
+    if meter_wanted(app)
+        && let Some(window) = app.get_webview_window("main")
+        && (!window.is_visible().unwrap_or(true) || platform::window::is_hidden_in_place(&window))
+    {
+        show_meter_again(app, &window);
+        return;
+    }
+    set_meter_wanted(app, !meter_wanted(app));
+}
+
+/// Toggle the click-through lock, and tell the page so its button and saved
+/// setting follow: its keybind and the tray's.
+pub(crate) fn toggle_overlay_lock(app: &tauri::AppHandle) {
+    let locked = app
+        .try_state::<AppState>()
+        .is_some_and(|s| s.overlay_lock.locked.load(std::sync::atomic::Ordering::SeqCst));
+    if platform::window::cursor_position().is_none() && !locked {
+        return; // the lock is not offered here
+    }
+    apply_overlay_lock(app, !locked);
+    let _ = app.emit("overlay-lock-changed", !locked);
+}
+
 fn start_hotkeys(app: &tauri::AppHandle, settings: &Settings) {
     use platform::hotkeys::Binding;
     let Some(hotkeys) = app.try_state::<Hotkeys>() else { return };
@@ -984,33 +1015,9 @@ fn start_hotkeys(app: &tauri::AppHandle, settings: &Settings) {
         let _ = h.emit("dps-update", &entity::dps_data::DpsData::new());
     }));
     let h = app.clone();
-    let toggle = binding("toggle", "dpsMeter.toggleWindowHotkey", Box::new(move || {
-        // Show or hide the meter, and remember it (as Settings →
-        // Plugins → Show the DPS meter does). Hidden by auto-hide
-        // only, it is shown, as before, and nothing changes.
-        if meter_wanted(&h)
-            && let Some(window) = h.get_webview_window("main")
-            && (!window.is_visible().unwrap_or(true) || platform::window::is_hidden_in_place(&window))
-        {
-            show_meter_again(&h, &window);
-            return;
-        }
-        let shown = !meter_wanted(&h);
-        set_meter_wanted(&h, shown);
-    }));
+    let toggle = binding("toggle", "dpsMeter.toggleWindowHotkey", Box::new(move || toggle_meter(&h)));
     let h = app.clone();
-    let lock = binding("lock", "dpsMeter.lockHotkey", Box::new(move || {
-        // Toggle the click-through lock, and tell the page so
-        // its button and saved setting follow.
-        let locked = h
-            .try_state::<AppState>()
-            .is_some_and(|s| s.overlay_lock.locked.load(std::sync::atomic::Ordering::SeqCst));
-        if platform::window::cursor_position().is_none() && !locked {
-            return; // the lock is not offered here
-        }
-        apply_overlay_lock(&h, !locked);
-        let _ = h.emit("overlay-lock-changed", !locked);
-    }));
+    let lock = binding("lock", "dpsMeter.lockHotkey", Box::new(move || toggle_overlay_lock(&h)));
     let h = app.clone();
     let plugins = binding("plugins", "dpsMeter.pluginWindowsHotkey", Box::new(move || {
         tracing::info!("Hotkey: bringing back the plugin windows");
@@ -1222,6 +1229,7 @@ fn set_language(app: tauri::AppHandle, state: tauri::State<'_, AppState>, langua
         tracing::warn!("No i18n data dir available for language reload");
     }
     state.settings.set("dpsMeter.language", &language);
+    crate::tray::relabel(&app);
     crate::plugins::broadcast(&app, "language", serde_json::Value::String(language));
 }
 
@@ -1268,7 +1276,7 @@ fn set_manual_device(state: tauri::State<'_, AppState>, device: String) {
 }
 
 #[tauri::command]
-fn quit_app(app: tauri::AppHandle) {
+pub(crate) fn quit_app(app: tauri::AppHandle) {
     save_fights_before_quit(&app);
     flush_settings_before_exit(&app);
     app.exit(0);
@@ -1402,6 +1410,7 @@ async fn show_update_window(
     arch_sha256: Option<String>,
     deb_sha256: Option<String>,
     rpm_sha256: Option<String>,
+    ask: Option<bool>,
 ) -> Result<bool, String> {
     // The manifest names a package per platform (the MSI; the Arch, Debian
     // and RPM packages). Where this install cannot update itself, or the
@@ -1424,6 +1433,11 @@ async fn show_update_window(
     if !platform::updater::supported() || package_url.is_empty() {
         tracing::info!("Update {} available (running {}); this install updates through its package manager", latest, current);
         return Ok(false);
+    }
+    // `ask` false: only whether there is something to offer, for the green
+    // button in the meter's title, which asks when clicked.
+    if ask == Some(false) {
+        return Ok(true);
     }
     let msg = format!("A new update is available!\n\nCurrent: {}\nLatest: {}\n\nDownload and install now?", current, latest);
 
@@ -1755,8 +1769,9 @@ async fn show_update_window(
     arch_sha256: Option<String>,
     deb_sha256: Option<String>,
     rpm_sha256: Option<String>,
+    ask: Option<bool>,
 ) -> Result<bool, String> {
-    let _ = (current, latest, msi_url, arch_url, deb_url, rpm_url, msi_sha256, arch_sha256, deb_sha256, rpm_sha256);
+    let _ = (current, latest, msi_url, arch_url, deb_url, rpm_url, msi_sha256, arch_sha256, deb_sha256, rpm_sha256, ask);
     Ok(false)
 }
 
@@ -2268,8 +2283,36 @@ fn restore_window_geometry(app: &tauri::AppHandle, window: &tauri::WebviewWindow
 /// through `run_on_main_thread` makes it worse, not better. An `async` command
 /// runs off the main thread, so the loop stays free to complete the callback.
 /// See <https://docs.rs/tauri/latest/tauri/webview/struct.WebviewWindowBuilder.html>.
+/// The Settings section a window opened on its behalf is to show first
+/// (`open_settings_at`), until its page asks (`take_settings_section`).
+fn pending_settings_section() -> &'static Mutex<Option<String>> {
+    static PENDING: std::sync::OnceLock<Mutex<Option<String>>> = std::sync::OnceLock::new();
+    PENDING.get_or_init(Mutex::default)
+}
+
+/// Open Settings on one section (the plugin dock's button: Plugins). An
+/// open Settings window switches to it; a new one shows it first.
 #[tauri::command]
-async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
+async fn open_settings_at(app: tauri::AppHandle, section: String) -> Result<(), String> {
+    if section.is_empty() || section.len() > 24 || !section.chars().all(|c| c.is_ascii_lowercase() || c == '-') {
+        return Err("not a section".into());
+    }
+    if app.get_webview_window("settings").is_some() {
+        let _ = app.emit_to("settings", "settings-section", &section);
+    } else {
+        *pending_settings_section().lock() = Some(section);
+    }
+    open_settings_window(app).await
+}
+
+/// The section a new Settings window opens on, once (`open_settings_at`).
+#[tauri::command]
+fn take_settings_section() -> Option<String> {
+    pending_settings_section().lock().take()
+}
+
+#[tauri::command]
+pub(crate) async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
     let ready = platform::window_startup::request_settings_open();
     if let Some(existing) = app.get_webview_window("settings") {
         if !ready {
@@ -3124,12 +3167,12 @@ pub fn run() {
             // Plugin windows open where they were left, at the size they
             // were left (#76).
             if let tauri::WindowEvent::Moved(at) = event
-                && window.label().starts_with("plugin-")
+                && crate::plugins::is_plugin_window(window.label())
             {
                 crate::plugins::note_moved(window.app_handle(), window.label(), *at);
             }
             if let tauri::WindowEvent::Resized(size) = event
-                && window.label().starts_with("plugin-")
+                && crate::plugins::is_plugin_window(window.label())
             {
                 crate::plugins::note_resized(window.app_handle(), window, *size);
             }
@@ -3155,16 +3198,32 @@ pub fn run() {
             {
                 crate::plugins::widgets::note_moved(window.app_handle(), window.label(), *at);
             }
+            // The dock gone: its plugins' frames with it, so their widgets
+            // and follows too, as a plugin window's below.
+            if let tauri::WindowEvent::Destroyed = event
+                && window.label() == crate::plugins::dock::LABEL
+            {
+                for id in crate::plugins::dock::members(window.app_handle()) {
+                    crate::plugins::widgets::close_all(window.app_handle(), &id);
+                    crate::plugins::boss_live::forget_plugin(window.app_handle(), &id);
+                }
+            }
             if let tauri::WindowEvent::Destroyed = event
                 && let Some(id) = window.label().strip_prefix("plugin-")
             {
-                crate::plugins::widgets::close_all(window.app_handle(), id);
-                crate::plugins::boss_live::forget_plugin(window.app_handle(), id);
+                // Moved into the dock: it runs there now, and has already
+                // opened its widgets and follows again (the window goes after
+                // the dock's frame starts), so they stay. Closed, they went
+                // with the window (Ping's display, 2026-10-23).
+                if !crate::plugins::dock::members(window.app_handle()).iter().any(|m| m == id) {
+                    crate::plugins::widgets::close_all(window.app_handle(), id);
+                    crate::plugins::boss_live::forget_plugin(window.app_handle(), id);
+                }
                 // The meter hidden and its last plugin window closed: nothing
                 // would be left on screen, so the meter comes back.
                 let app = window.app_handle();
                 let label = window.label().to_string();
-                let others = app.webview_windows().into_keys().any(|l| l != label && l.starts_with("plugin-"));
+                let others = app.webview_windows().into_keys().any(|l| l != label && crate::plugins::is_plugin_window(&l));
                 if !others && !meter_wanted(app) {
                     set_meter_wanted(app, true);
                 }
@@ -3450,13 +3509,14 @@ pub fn run() {
             plugin_host.reload(app.handle());
             crate::plugins::restore_windows(app.handle());
             #[cfg(feature = "online")]
-            crate::plugins::alert_updates_at_start(app.handle());
+            crate::plugins::find_updates_at_start(app.handle());
 
             app.manage(Hotkeys {
                 manager: platform::hotkeys::HotkeyManager::new(),
                 status: Arc::new(Mutex::new(HashMap::new())),
             });
             apply_global_hotkeys(app.handle());
+            crate::tray::spawn(app.handle());
 
             // DPS to the windows, checked at the meter update rate (200 ms
             // unless changed in Settings > Advanced) and sent when it changed
@@ -3567,14 +3627,17 @@ pub fn run() {
                             }
                         }
 
-                        // --- Hide while AION2 is closed (every 2 s) ---
-                        // Hidden as the game closes (or the option is turned on
-                        // with it closed), shown as it opens: in between, the
-                        // keybind can still bring the meter back.
+                        // --- Hide while AION2 is closed, or while solo (every 2 s) ---
+                        // Hidden as the game closes or the party breaks up (or
+                        // the option is turned on then), shown as it opens or a
+                        // party forms: in between, the keybind can still bring
+                        // the meter back. Solo is fewer than two in the party,
+                        // as the game last told (Hirai, 2026-10-22).
                         if tick_count % 4 == 0 {
-                            let want = state.settings.get("dpsMeter.hideWhenGameClosed").as_deref() == Some("true")
-                                && meter_wanted(&handle)
-                                && !platform::window_detector::find_aion2_window();
+                            let on = |key: &str| state.settings.get(key).as_deref() == Some("true");
+                            let closed = on("dpsMeter.hideWhenGameClosed") && !platform::window_detector::find_aion2_window();
+                            let solo = on("dpsMeter.hideWhenSolo") && state.data_storage.get_party_members().len() < 2;
+                            let want = meter_wanted(&handle) && (closed || solo);
                             if want != hidden_closed {
                                 if let Some(window) = handle.get_webview_window("main") {
                                     if want {
@@ -3791,6 +3854,8 @@ pub fn run() {
             crate::plugins::plugin_add_folder,
             crate::plugins::plugin_remove_folder,
             crate::plugins::plugin_check_updates,
+            crate::plugins::plugin_pending_updates,
+            crate::plugins::plugin_offer_updates,
             crate::plugins::plugin_catalog,
             crate::plugins::plugin_install,
             crate::plugins::plugin_uninstall,
@@ -3802,6 +3867,13 @@ pub fn run() {
             crate::plugins::plugin_set_enabled,
             crate::plugins::plugin_set_hide,
             crate::plugins::plugin_hello,
+            open_settings_at,
+            take_settings_section,
+            crate::plugins::dock::dock_hello,
+            crate::plugins::dock::dock_close,
+            crate::plugins::dock::dock_fold,
+            crate::plugins::dock::plugin_set_docked,
+            crate::plugins::set_plugin_theme,
             crate::plugins::widgets::plugin_widget_open,
             crate::plugins::widgets::plugin_widget_close,
             crate::plugins::widgets::plugin_widget_send,

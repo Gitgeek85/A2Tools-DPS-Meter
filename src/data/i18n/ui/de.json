@@ -14,6 +14,10 @@
       "ariaHps": "Zeigt Heilung pro Sekunde",
       "ariaHeal": "Zeigt Gesamtheilung",
       "ariaStagger": "Zeigt den Stagger-Schaden an der Leiste des Bosses"
+    },
+    "updates": {
+      "meter": "A2Tools DPS-Meter {version} ist verfügbar",
+      "plugins": "Plugin-Updates: {list}"
     }
   },
   "details": {
@@ -123,7 +127,12 @@
       "deaths": "Tode",
       "avgDps": "Ø DPS",
       "peakDps": "Spitzen-DPS",
-      "peakDpsTip": "Die höchsten DPS über beliebige 5 Sekunden des Kampfes"
+      "peakDpsTip": "Die höchsten DPS über beliebige 5 Sekunden des Kampfes",
+      "blockedTaken": "Geblockt (Perfekt)",
+      "blockedTakenTip": "Von den erlittenen Treffern: mit dem Schild geblockt, in Klammern perfekt geblockt",
+      "parriedTaken": "Pariert (Perfekt)",
+      "parriedTakenTip": "Von den erlittenen Treffern: pariert, in Klammern perfekt pariert",
+      "parryRateTip": "Von deinen Treffern: der Anteil, den das Ziel pariert hat"
     },
     "titleFor": "für",
     "titleVs": "gegen",
@@ -300,6 +309,7 @@
     "showDpsSuffix": "/s an DPS anhängen",
     "autoHideMeter": "Ausblenden, wenn AION2 nicht im Vordergrund ist",
     "hideWhenGameClosed": "Ausblenden, wenn AION2 geschlossen ist",
+    "hideWhenSolo": "Nur in einer Gruppe anzeigen",
     "showSuspendBtn": "Taste „Erfassung pausieren“ anzeigen",
     "showLockBtn": "Taste für Durchklick-Sperre anzeigen",
     "playerLimit": {
@@ -570,7 +580,8 @@
       "pluginDevMode": "Lädt Plugins aus Ordnern auf diesem Computer, um sie zu entwickeln und zu testen. Sie sind nicht geprüft, lade also nur Plugins, denen du vertraust.",
       "showMeter": "Aus: Nur deine Plugins sind zu sehen. Das Meter liest im Hintergrund weiter Kämpfe mit und lädt hoch. Zurückholen kannst du es hier, mit dem Ein-/Ausblenden-Hotkey oder mit dem Meter-Knopf an einem Plugin-Fenster.",
       "clearOnZone": "Wann der letzte Kampf nach einem Zonenwechsel aus dem Meter verschwindet. Jeder Kampf bleibt so oder so im Verlauf.",
-      "hideWhenGameClosed": "Das Meter wird ausgeblendet, solange das Spiel nicht läuft, und erscheint wieder, wenn es startet."
+      "hideWhenGameClosed": "Das Meter wird ausgeblendet, solange das Spiel nicht läuft, und erscheint wieder, wenn es startet.",
+      "hideWhenSolo": "Das Meter wird ausgeblendet, solange du in keiner Gruppe bist, und erscheint wieder, wenn du einer beitrittst. Die Tastenkombination zum Ein-/Ausblenden holt es trotzdem hervor."
     },
     "globalHotkeys": "Tastenkürzel verwenden",
     "hotkeyConsent": {
@@ -631,6 +642,7 @@
       "showMeter": "DPS-Meter anzeigen",
       "hideClosed": "Ausblenden, wenn AION2 geschlossen ist",
       "hideUnfocused": "Ausblenden, wenn AION2 nicht im Vordergrund ist",
+      "inDock": "Im Plugin-Dock (aus: eigenes Fenster)",
       "search": "Suchen",
       "noMatch": "Keine passenden Plugins.",
       "permsTitle": "Es darf:"
@@ -774,5 +786,22 @@
     "alsoAsks": "Die neue Version möchte außerdem:",
     "updateNow": "Jetzt aktualisieren?",
     "failed": "Konnte nicht aktualisiert werden:"
+  },
+  "pluginDock": {
+    "tabs": "Plugins als Tabs zeigen",
+    "stack": "Plugins untereinander zeigen",
+    "fold": "Dock einklappen",
+    "unfold": "Dock ausklappen",
+    "hideControls": "Bedienelemente ausblenden",
+    "showControls": "Bedienelemente einblenden",
+    "popOut": "In eigenem Fenster öffnen",
+    "pluginSettings": "Plugin-Einstellungen",
+    "hide": "Ausblenden (das Plugin läuft weiter)",
+    "close": "Dock ausblenden (die Plugins laufen weiter)",
+    "hideMeter": "DPS-Meter ausblenden",
+    "showMeter": "DPS-Meter einblenden",
+    "settings": "Meter-Einstellungen",
+    "opacity": "Hintergrund-Deckkraft",
+    "failed": "Dieses Plugin konnte nicht starten: {error}"
   }
 }

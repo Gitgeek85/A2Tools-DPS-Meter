@@ -56,6 +56,7 @@
 
           <div class="headerBtns">
             <div class="headerBtn lockBtn" style="display:none" role="button" tabindex="0" aria-label="Lock overlay (click-through)" data-i18n-aria-label="settings.showLockBtn"><i data-lucide="lock-open"></i></div>
+            <div class="headerBtn updatesBtn" role="button" hidden><i data-lucide="circle-arrow-down"></i></div>
             <div class="headerBtn suspendBtn" style="display:none"><i data-lucide="power"></i></div>
             <div class="headerBtn historyBtn" role="button" tabindex="0" aria-label="Fight history" data-i18n-aria-label="history.title"><i data-lucide="scroll-text"></i></div>
             <div class="headerBtn resetBtn"><i data-lucide="rotate-ccw"></i></div>
@@ -657,6 +658,13 @@
                     <span class="settingsToggleLabel settingsLabel" data-i18n="settings.hideWhenGameClosed" title="The meter hides while the game isn't running, and comes back when it starts." data-i18n-title="settings.tips.hideWhenGameClosed">Hide while AION2 is closed</span>
                     <span class="settingsToggleControl">
                       <input type="checkbox" class="hideWhenGameClosedCheckbox" />
+                      <span class="settingsToggleTrack" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="settingsToggle">
+                    <span class="settingsToggleLabel settingsLabel" data-i18n="settings.hideWhenSolo" title="The meter hides while you're not in a party, and comes back when you join one. The Show/Hide keybind still brings it up." data-i18n-title="settings.tips.hideWhenSolo">Show only in a party</span>
+                    <span class="settingsToggleControl">
+                      <input type="checkbox" class="hideWhenSoloCheckbox" />
                       <span class="settingsToggleTrack" aria-hidden="true"></span>
                     </span>
                   </label>
@@ -1635,10 +1643,11 @@
     <script src="/src/js/history.js?v=2018a"></script>
 
     <!-- 추가 -->
-    <script src="/src/js/checkRelease.js?v=202b6"></script>
+    <script src="/src/js/checkRelease.js?v=2076a"></script>
 
     <script src="/src/js/i18n.js"></script>
-    <script src="/src/js/core.js?v=2018a"></script>
+    <script src="/src/js/core.js?v=2076a"></script>
+    <script src="/src/js/pluginIcons.js"></script>
     <script src="/src/js/pluginSettings.js"></script>
   </body>
 </html>

@@ -14,6 +14,10 @@
       "ariaHps": "Showing raw healing per second (excludes passive regen)",
       "ariaHeal": "Showing total raw healing (excludes passive regen)",
       "ariaStagger": "Showing stagger dealt to the boss's gauge"
+    },
+    "updates": {
+      "meter": "A2Tools DPS Meter {version} is available",
+      "plugins": "Plugin updates: {list}"
     }
   },
   "details": {
@@ -128,7 +132,12 @@
       "deaths": "Deaths",
       "avgDps": "Avg DPS",
       "peakDps": "Peak DPS",
-      "peakDpsTip": "The highest DPS over any 5 seconds of the fight"
+      "peakDpsTip": "The highest DPS over any 5 seconds of the fight",
+      "blockedTaken": "Blocked (Perfect)",
+      "blockedTakenTip": "Of the hits taken: blocked with a shield, and in brackets perfectly blocked",
+      "parriedTaken": "Parried (Perfect)",
+      "parriedTakenTip": "Of the hits taken: parried, and in brackets perfectly parried",
+      "parryRateTip": "Of your hits: the share the target parried"
     },
     "titleFor": "for",
     "titleVs": "vs",
@@ -310,6 +319,7 @@
     "showDpsSuffix": "Add /s to DPS",
     "autoHideMeter": "Hide when AION2 isn't focused",
     "hideWhenGameClosed": "Hide while AION2 is closed",
+    "hideWhenSolo": "Show only in a party",
     "showSuspendBtn": "Show pause capture button",
     "showLockBtn": "Show click-through lock button",
     "playerLimit": {
@@ -582,7 +592,8 @@
       "pluginDevMode": "Loads plugins from folders on this computer, for building and testing them. They are not reviewed, so only load plugins you trust.",
       "showMeter": "Off: only your plugins show. The meter keeps reading combat and uploading in the background. Bring it back here, with the show/hide hotkey, or with the meter button on a plugin window.",
       "clearOnZone": "When the last fight leaves the meter after the zone changes. Every fight stays in History either way.",
-      "hideWhenGameClosed": "The meter hides while the game isn't running, and comes back when it starts."
+      "hideWhenGameClosed": "The meter hides while the game isn't running, and comes back when it starts.",
+      "hideWhenSolo": "The meter hides while you're not in a party, and comes back when you join one. The Show/Hide keybind still brings it up."
     },
     "globalHotkeys": "Use keybinds",
     "hotkeyConsent": {
@@ -643,6 +654,7 @@
       "showMeter": "Show the DPS meter",
       "hideClosed": "Hide while AION2 is closed",
       "hideUnfocused": "Hide when AION2 isn't focused",
+      "inDock": "In the plugin dock (off: its own window)",
       "search": "Search",
       "noMatch": "No plugins match.",
       "permsTitle": "It can:"
@@ -786,5 +798,22 @@
     "alsoAsks": "The new version also asks to:",
     "updateNow": "Update now?",
     "failed": "Couldn't update:"
+  },
+  "pluginDock": {
+    "tabs": "Show the plugins as tabs",
+    "stack": "Stack the plugins",
+    "fold": "Fold the dock",
+    "unfold": "Unfold the dock",
+    "hideControls": "Hide the controls",
+    "showControls": "Show the controls",
+    "popOut": "Open in its own window",
+    "pluginSettings": "Plugin settings",
+    "hide": "Hide (the plugin keeps running)",
+    "close": "Hide the dock (the plugins keep running)",
+    "hideMeter": "Hide the DPS meter",
+    "showMeter": "Show the DPS meter",
+    "settings": "Meter settings",
+    "opacity": "Background opacity",
+    "failed": "This plugin could not start: {error}"
   }
 }
