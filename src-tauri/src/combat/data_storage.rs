@@ -5,6 +5,7 @@ use std::sync::Arc;
 use parking_lot::{Mutex, RwLock};
 
 use crate::capture::abnormal;
+use crate::combat::stagger::{StaggerHit, StaggerLog, StaggerWindow};
 
 use crate::entity::damage_packet::ParsedDamagePacket;
 use crate::entity::job_class::JobClass;
@@ -494,6 +495,10 @@ pub struct DataStorage {
     /// yet. Its own lock: it is fed every packet, and nothing here needs it
     /// together with `inner`.
     abnormals: Mutex<AbnormalLog>,
+    /// Stagger gauges and their windows (see `combat::stagger`). Its own
+    /// lock, as `abnormals`: fed by its own records, read when a fight is
+    /// saved.
+    stagger: Mutex<StaggerLog>,
 }
 
 /// The timeline and when it was last pruned.
@@ -814,6 +819,7 @@ impl DataStorage {
             combat_reset_requested: AtomicBool::new(false),
             before_reset: RwLock::new(None),
             abnormals: Mutex::new(AbnormalLog { timeline: abnormal::Timeline::default(), pruned_ms: NEVER_MS }),
+            stagger: Mutex::new(StaggerLog::default()),
         }
     }
 
@@ -872,6 +878,71 @@ impl DataStorage {
     /// Forget the buff timeline, for a capture from another session.
     pub fn forget_abnormals(&self) {
         self.abnormals.lock().timeline.clear();
+    }
+
+    /// The stagger gauge an entity's spawn carries (its starting value).
+    pub fn note_stagger_spawn(&self, entity: i32, max: u32, rest: u32) {
+        self.stagger.lock().note_spawn(entity, max, rest);
+    }
+
+    /// A gauge update (`05 E0 .. 03 01`), at the current time.
+    pub fn note_stagger_gauge(&self, entity: i32, max: u32, rest: u32, status: u8) {
+        tracing::debug!("Stagger gauge: entity {} at {}/{} status {}", entity, rest, max, status);
+        self.stagger.lock().note_gauge(entity, max, rest, status, now_ms());
+    }
+
+    /// A gauge broke (`05 E0 .. 00 03 02`), at the current time.
+    pub fn note_stagger_break(&self, entity: i32) {
+        tracing::debug!("Stagger gauge: entity {} broken", entity);
+        self.stagger.lock().note_break(entity, now_ms());
+    }
+
+    /// A hit with a value, or a DoT tick, that the next update of the
+    /// target's gauge may take (`StaggerLog::note_hit`).
+    pub fn note_stagger_hit(&self, target: i32, actor: i32, skill: i32, dot: bool) {
+        self.stagger.lock().note_hit(target, actor, skill, now_ms(), dot);
+    }
+
+    /// The gauge of `entity` as last known: (max, rest, last status).
+    pub fn stagger_gauge(&self, entity: i32) -> Option<(u32, u32, Option<u8>)> {
+        self.stagger.lock().gauge(entity)
+    }
+
+    #[cfg(test)]
+    pub fn stagger_open_window(&self, entity: i32) -> Option<crate::combat::stagger::Window> {
+        self.stagger.lock().open_window(entity).cloned()
+    }
+
+    /// The stagger windows with a deduction from `start_ms` to `end_ms`
+    /// (`StaggerLog::windows_between`), for a fight starting at `start_ms`:
+    /// times from its start, summons resolved to their owners.
+    pub fn fight_stagger(&self, start_ms: i64, end_ms: i64) -> Vec<StaggerWindow> {
+        let windows = self.stagger.lock().windows_between(start_ms, end_ms);
+        let inner = self.inner.read();
+        windows
+            .into_iter()
+            .map(|w| StaggerWindow {
+                entity: w.entity,
+                mob_code: inner.mob_storage.get(&w.entity).copied().unwrap_or(0),
+                max: w.max,
+                start: w.start_ms - start_ms,
+                end: w.end_ms.unwrap_or(end_ms) - start_ms,
+                result: w.outcome.unwrap_or(crate::combat::stagger::Outcome::Missed),
+                missing: w.missing,
+                incomplete: w.incomplete,
+                hits: w
+                    .hits
+                    .iter()
+                    .map(|h| StaggerHit {
+                        t: h.ms - start_ms,
+                        actor: summon_resolver::resolve(h.actor, &inner.summon_storage),
+                        skill: h.skill,
+                        value: h.value,
+                        ambiguous: h.ambiguous,
+                    })
+                    .collect(),
+            })
+            .collect()
     }
 
     /// Called when a self/world teleport (zone-change opcode) is seen. Resets
@@ -1626,6 +1697,7 @@ impl DataStorage {
         }
         inner.boss_hp_now.remove(&entity_id);
         inner.boss_hp_sent.remove(&entity_id);
+        self.stagger.lock().note_gone(entity_id, now_ms());
         inner.dead_entity_ids.insert(entity_id);
         inner.hp_floored_ids.remove(&entity_id);
         inner.death_log.push_back((entity_id, now_ms(), None));
@@ -1729,8 +1801,9 @@ impl DataStorage {
     }
 
     /// `id` left the world. Only a linked summon is marked: see
-    /// `Inner::despawned_summon_ids`.
+    /// `Inner::despawned_summon_ids`. A stagger window open on it is missed.
     pub fn note_despawn(&self, id: i32) {
+        self.stagger.lock().note_gone(id, now_ms());
         let mut inner = self.inner.write();
         if inner.summon_storage.contains_key(&id) {
             inner.despawned_summon_ids.insert(id);
@@ -2319,6 +2392,7 @@ impl DataStorage {
     /// reset would otherwise stay unlinked for good. Ids that are reused get
     /// their links dropped by the new spawn (see `note_summon_spawn`).
     pub fn flush(&self) {
+        self.stagger.lock().forget_pending();
         let mut inner = self.inner.write();
         inner.target_combat.clear();
         inner.held_dot_ticks.clear();
@@ -2342,6 +2416,7 @@ impl DataStorage {
     /// Used on a zone-change / in-instance-teleport reset so the meter starts on
     /// clean numbers without dropping who your party and you are.
     pub fn flush_combat_only(&self) {
+        self.stagger.lock().forget_pending();
         let mut inner = self.inner.write();
         inner.target_combat.clear();
         inner.held_dot_ticks.clear();
@@ -2359,8 +2434,10 @@ impl DataStorage {
     /// Drop every summon link, for a capture from another session (a replay),
     /// whose entity ids mean something else.
     pub fn forget_summon_links(&self) {
-        // The buffs those ids had on are as foreign as the links.
+        // The buffs those ids had on are as foreign as the links, and so
+        // are their stagger gauges.
         self.forget_abnormals();
+        self.stagger.lock().clear();
         let mut inner = self.inner.write();
         inner.summon_storage.clear();
         inner.confirmed_summon_ids.clear();

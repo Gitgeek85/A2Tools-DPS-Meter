@@ -1204,6 +1204,10 @@ impl DpsCalculator {
                 target_data.last_damage_time,
                 actors.iter().map(|a| a.actor_id),
             );
+            // Every gauge that took a deduction in the fight, not only the
+            // target's. A window still open is saved as missed, and stays
+            // open here: this fight is saved again while it goes on.
+            let stagger = self.data_storage.fight_stagger(target_data.first_damage_time, target_data.last_damage_time);
             let record = FightRecord {
                 id,
                 boss_name,
@@ -1221,6 +1225,7 @@ impl DpsCalculator {
                 dungeon_id: fight_dungeon(&self.npc_lookup, mob_code, roster_dungeon),
                 server_id: self.data_storage.fight_server_id(),
                 buffs: Some(buffs),
+                stagger: Some(stagger),
             };
 
             if is_ended {

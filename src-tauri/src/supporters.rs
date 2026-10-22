@@ -447,6 +447,7 @@ mod tests {
             dungeon_id: 0,
             server_id: 0,
             buffs: None,
+            stagger: None,
         }
     }
 

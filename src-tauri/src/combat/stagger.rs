@@ -1,0 +1,512 @@
+//! A boss's stagger gauge, and who broke it.
+//!
+//! The server sends the gauge's state after every hit that takes stagger off
+//! it (`StreamProcessor::parse_stagger_gauge_packet`, `05 E0`), and the
+//! gauge's size in the boss's spawn (`41 36`, its last 15 bytes). Nothing per
+//! skill or per boss is needed: what a hit took off is the gauge before it
+//! less the gauge after it.
+//!
+//! The gauge counts down. A window opens when the gauge becomes active (its
+//! first update with status `02`/`03`) or with its first deduction, whichever
+//! comes first, and ends with a break (`00 03 02`), or as missed: a reset to
+//! full without a break, the boss dying or leaving, or the fight ending.
+//!
+//! Each deduction goes to the hit that caused it. The server writes a hit as
+//! one block: the `04 38` record with its value, then entries of the same hit
+//! with none, its effects, and then the gauge's new state. Over all 36
+//! deductions in a solo capture of 2026-10-22 (Templar, Transcendent Bakarma
+//! and the two minibosses before it), the `05 E0` came straight after the hit
+//! that caused it, with only that hit's own effects in between. So the last
+//! hit with a value on an entity is remembered, and that entity's next gauge
+//! update takes it, whether or not it is a deduction:
+//!
+//! - a DoT tick (`05 38`) is remembered only when no hit is: `05 38` is also
+//!   an effect inside a hit's block, and must not take a deduction from it;
+//! - a deduction with no hit remembered (a lost packet, an opcode not read)
+//!   goes to actor 0, "unknown", so a window's deductions always add up to
+//!   what the gauge lost;
+//! - a hit with a value from another actor since the last update marks the
+//!   deduction `ambiguous`: never seen solo, it shows a party's
+//!   misattributions rather than hiding them.
+//!
+//! The status byte is kept and logged but decides nothing beyond when a
+//! window opens: its meaning is read from three monsters only. See
+//! `note_gauge`.
+
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
+/// A remembered hit older than this when the gauge moves belongs to a fight
+/// that has ended: the meter's own idle gap between two fights.
+const PENDING_HIT_MAX_AGE_MS: i64 = 30_000;
+/// How long a closed window is kept: long enough for any fight to be saved
+/// again, short enough that a meter left running all day holds little.
+const WINDOW_RETENTION_MS: i64 = 30 * 60 * 1000;
+
+/// What a window ended with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Outcome {
+    /// The gauge broke (`05 E0 <entity> 00 03 02`).
+    Break,
+    /// Reset to full without a break, the entity died or left, or the fight
+    /// ended with the window still open.
+    Missed,
+}
+
+/// One deduction from a gauge.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Hit {
+    pub ms: i64,
+    /// The entity that hit, as the record names it (a summon is resolved to
+    /// its owner when the fight is saved); 0 when no hit was remembered.
+    pub actor: i32,
+    /// The skill id as the hit record carries it (12090243 for Punishment),
+    /// 0 with no hit.
+    pub skill: i32,
+    pub value: u32,
+    pub ambiguous: bool,
+}
+
+/// One window of a gauge, from becoming active to its break or its miss.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Window {
+    pub entity: i32,
+    pub max: u32,
+    pub start_ms: i64,
+    /// `None` while open.
+    pub end_ms: Option<i64>,
+    pub outcome: Option<Outcome>,
+    /// What was left of the gauge when it was missed; 0 on a break.
+    pub missing: u32,
+    /// The gauge's starting value was not seen (no spawn, and its first
+    /// update already below full): a deduction before it is lost.
+    pub incomplete: bool,
+    pub hits: Vec<Hit>,
+    /// The gauge's value at each change while open, for its value at a
+    /// fight's end.
+    rests: Vec<(i64, u32)>,
+}
+
+impl Window {
+    /// The gauge's value at `ms`, as last known.
+    pub fn rest_at(&self, ms: i64) -> u32 {
+        self.rests.iter().take_while(|r| r.0 <= ms).last().or(self.rests.first()).map_or(self.max, |r| r.1)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Gauge {
+    max: u32,
+    rest: u32,
+    /// The last status byte (`None` from a spawn). Logged, decides nothing.
+    status: Option<u8>,
+    /// Broken and not yet refilled.
+    broken: bool,
+    /// The gauge's value has been seen in full (its spawn, or an update at
+    /// `max`), so no deduction before the next one was lost.
+    baseline: bool,
+    open: Option<Window>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct PendingHit {
+    ms: i64,
+    actor: i32,
+    skill: i32,
+    ambiguous: bool,
+}
+
+/// Every gauge the meter knows of, the hits waiting for their update, and
+/// the windows.
+#[derive(Debug, Default)]
+pub struct StaggerLog {
+    gauges: HashMap<i32, Gauge>,
+    pending: HashMap<i32, PendingHit>,
+    closed: Vec<Window>,
+}
+
+impl StaggerLog {
+    /// The gauge in an entity's spawn: its starting value. It opens no
+    /// window (a mechanic boss's gauge is in its spawn, locked, until its
+    /// phase begins) and moves an open one by nothing.
+    pub fn note_spawn(&mut self, entity: i32, max: u32, rest: u32) {
+        match self.gauges.get_mut(&entity) {
+            Some(g) => {
+                g.max = max;
+                g.rest = rest;
+                g.baseline = true;
+            }
+            None => {
+                self.gauges.insert(entity, Gauge { max, rest, status: None, broken: false, baseline: true, open: None });
+            }
+        }
+    }
+
+    /// A hit with a value on `entity`, or a DoT tick (`dot`). Only on an
+    /// entity whose gauge is known: on any other the first update only sets
+    /// the starting value, so nothing would take it.
+    pub fn note_hit(&mut self, entity: i32, actor: i32, skill: i32, ms: i64, dot: bool) {
+        if !self.gauges.contains_key(&entity) {
+            return;
+        }
+        let before = self.pending.get(&entity).filter(|p| ms - p.ms <= PENDING_HIT_MAX_AGE_MS).copied();
+        if dot && before.is_some() {
+            return;
+        }
+        let ambiguous = before.is_some_and(|p| p.ambiguous || p.actor != actor);
+        self.pending.insert(entity, PendingHit { ms, actor, skill, ambiguous });
+    }
+
+    /// A gauge update, `05 E0 <entity> 03 01 <max> <rest> <status>`.
+    ///
+    /// | update                            | meaning                              |
+    /// |-----------------------------------|--------------------------------------|
+    /// | `rest` falls, `max` unchanged     | a deduction, to the remembered hit   |
+    /// | `rest` back to `max` after break  | refilled: no stagger, no window yet  |
+    /// | `rest` back to `max`, no break    | reset: the open window is missed     |
+    /// | `max` changes (60/40 after a wipe)| a new starting value, no deduction   |
+    /// | unchanged, status `02`/`03`       | the gauge is active: a window opens  |
+    pub fn note_gauge(&mut self, entity: i32, max: u32, rest: u32, status: u8, ms: i64) {
+        let hit = self.take_pending(entity, ms);
+        let active = matches!(status, 2 | 3);
+        let Some(g) = self.gauges.get_mut(&entity) else {
+            // No spawn seen: this sets the starting value. Below full, what
+            // was taken before it is lost.
+            let mut g = Gauge { max, rest, status: Some(status), broken: false, baseline: rest >= max, open: None };
+            if active || rest < max {
+                g.open = Some(open_window(entity, max, rest, ms, rest < max));
+            }
+            self.gauges.insert(entity, g);
+            return;
+        };
+        g.status = Some(status);
+        if max != g.max {
+            g.max = max;
+            g.rest = rest;
+            g.baseline = rest >= max;
+            if let Some(w) = g.open.as_mut() {
+                w.max = max;
+                w.rests.push((ms, rest));
+            }
+            return;
+        }
+        if rest < g.rest {
+            let value = g.rest - rest;
+            let incomplete = !g.baseline;
+            let w = g.open.get_or_insert_with(|| open_window(entity, max, g.rest, ms, incomplete));
+            w.hits.push(hit_of(hit, ms, value));
+            w.rests.push((ms, rest));
+            g.rest = rest;
+            g.broken = false;
+            return;
+        }
+        if rest > g.rest {
+            let refilled = g.broken;
+            g.rest = rest;
+            g.broken = false;
+            if rest >= max {
+                g.baseline = true;
+                if !refilled && let Some(mut w) = g.open.take() {
+                    let left = w.rests.last().map_or(w.max, |r| r.1);
+                    close(&mut w, ms, Outcome::Missed, left);
+                    self.push_closed(w, ms);
+                }
+            } else if let Some(w) = g.open.as_mut() {
+                w.rests.push((ms, rest));
+            }
+            return;
+        }
+        if active && g.open.is_none() && !g.broken {
+            let incomplete = !g.baseline;
+            g.open = Some(open_window(entity, max, rest, ms, incomplete));
+        }
+    }
+
+    /// The gauge broke, `05 E0 <entity> 00 03 02`: the remembered hit took
+    /// what was left.
+    pub fn note_break(&mut self, entity: i32, ms: i64) {
+        let hit = self.take_pending(entity, ms);
+        let Some(g) = self.gauges.get_mut(&entity) else {
+            return;
+        };
+        let incomplete = !g.baseline;
+        let mut w = g.open.take().unwrap_or_else(|| open_window(entity, g.max, g.rest, ms, incomplete));
+        if g.rest > 0 {
+            w.hits.push(hit_of(hit, ms, g.rest));
+        }
+        w.rests.push((ms, 0));
+        close(&mut w, ms, Outcome::Break, 0);
+        g.rest = 0;
+        g.broken = true;
+        self.push_closed(w, ms);
+    }
+
+    /// The entity died or left: an open window is missed, and the gauge is
+    /// forgotten with it.
+    pub fn note_gone(&mut self, entity: i32, ms: i64) {
+        self.pending.remove(&entity);
+        if let Some(mut g) = self.gauges.remove(&entity)
+            && let Some(mut w) = g.open.take()
+        {
+            close(&mut w, ms, Outcome::Missed, g.rest);
+            self.push_closed(w, ms);
+        }
+    }
+
+    /// The fight ended: no remembered hit carries over into the next.
+    pub fn forget_pending(&mut self) {
+        self.pending.clear();
+    }
+
+    /// Everything, for a capture from another session.
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    /// The gauge's (max, rest, last status), if known.
+    pub fn gauge(&self, entity: i32) -> Option<(u32, u32, Option<u8>)> {
+        self.gauges.get(&entity).map(|g| (g.max, g.rest, g.status))
+    }
+
+    /// The window open on `entity`, if any.
+    pub fn open_window(&self, entity: i32) -> Option<&Window> {
+        self.gauges.get(&entity).and_then(|g| g.open.as_ref())
+    }
+
+    /// Every window, closed and open, with a deduction from `start_ms` to
+    /// `end_ms`, as the fight in that span saw them: a window still open at
+    /// `end_ms`, or closed after it, is missed at `end_ms` with what was
+    /// left of its gauge then, and only its hits up to `end_ms` are kept. The
+    /// state here is not changed: a fight is saved again while it goes on.
+    pub fn windows_between(&self, start_ms: i64, end_ms: i64) -> Vec<Window> {
+        let open = self.gauges.values().filter_map(|g| g.open.as_ref());
+        let mut out: Vec<Window> = self
+            .closed
+            .iter()
+            .chain(open)
+            .filter(|w| w.hits.iter().any(|h| h.ms >= start_ms && h.ms <= end_ms))
+            .map(|w| {
+                let mut w = w.clone();
+                if w.end_ms.is_none_or(|e| e > end_ms) {
+                    w.hits.retain(|h| h.ms <= end_ms);
+                    let left = w.rest_at(end_ms);
+                    close(&mut w, end_ms, Outcome::Missed, left);
+                }
+                w
+            })
+            .collect();
+        out.sort_by_key(|w| (w.start_ms, w.entity));
+        out
+    }
+
+    fn take_pending(&mut self, entity: i32, ms: i64) -> Option<PendingHit> {
+        self.pending.remove(&entity).filter(|p| ms - p.ms <= PENDING_HIT_MAX_AGE_MS)
+    }
+
+    fn push_closed(&mut self, w: Window, ms: i64) {
+        self.closed.retain(|c| c.end_ms.is_some_and(|e| e >= ms - WINDOW_RETENTION_MS));
+        self.closed.push(w);
+    }
+}
+
+fn open_window(entity: i32, max: u32, rest: u32, ms: i64, incomplete: bool) -> Window {
+    Window {
+        entity,
+        max,
+        start_ms: ms,
+        end_ms: None,
+        outcome: None,
+        missing: 0,
+        incomplete,
+        hits: Vec::new(),
+        rests: vec![(ms, rest)],
+    }
+}
+
+fn close(w: &mut Window, ms: i64, outcome: Outcome, left: u32) {
+    w.end_ms = Some(ms);
+    w.outcome = Some(outcome);
+    w.missing = if outcome == Outcome::Missed { left } else { 0 };
+}
+
+fn hit_of(hit: Option<PendingHit>, ms: i64, value: u32) -> Hit {
+    match hit {
+        Some(p) => Hit { ms: p.ms, actor: p.actor, skill: p.skill, value, ambiguous: p.ambiguous },
+        None => Hit { ms, actor: 0, skill: 0, value, ambiguous: false },
+    }
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
+/// A window as a fight in History keeps it (`FightRecord::stagger`). Times
+/// in ms from the fight's start, as `fight_buffs` keeps them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StaggerWindow {
+    pub entity: i32,
+    /// The entity's NPC code, 0 when not known.
+    #[serde(default)]
+    pub mob_code: i32,
+    pub max: u32,
+    pub start: i64,
+    pub end: i64,
+    pub result: Outcome,
+    /// What was left of the gauge when it was missed; 0 on a break.
+    #[serde(default)]
+    pub missing: u32,
+    /// The gauge's starting value was not seen: a deduction before the
+    /// first update is not in `hits`.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub incomplete: bool,
+    pub hits: Vec<StaggerHit>,
+}
+
+/// One deduction in a `StaggerWindow`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StaggerHit {
+    /// When the hit landed, in ms from the fight's start.
+    pub t: i64,
+    /// Who hit, a summon resolved to its owner; 0 when not known.
+    pub actor: i32,
+    /// The skill id as the hit record carries it; 0 when not known.
+    pub skill: i32,
+    pub value: u32,
+    /// Another actor also hit this entity since the gauge's last update.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub ambiguous: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deductions_go_to_the_hit_before_them_and_a_reset_misses_the_window() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_gauge(1, 40, 40, 3, 100);
+        assert!(log.open_window(1).is_some(), "the gauge became active");
+        log.note_hit(1, 7, 12010340, 200, false);
+        log.note_hit(1, 7, 12090243, 300, false);
+        log.note_gauge(1, 40, 5, 2, 310);
+        log.note_gauge(1, 40, 40, 0, 900);
+        let w = &log.windows_between(0, 1000)[0];
+        assert_eq!(w.outcome, Some(Outcome::Missed));
+        assert_eq!(w.missing, 5);
+        assert_eq!(w.start_ms, 100);
+        assert_eq!(w.end_ms, Some(900));
+        assert_eq!(w.hits, vec![Hit { ms: 300, actor: 7, skill: 12090243, value: 35, ambiguous: false }]);
+    }
+
+    #[test]
+    fn a_window_open_at_the_fights_end_is_missed_there() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_hit(1, 7, 1, 300, false);
+        log.note_gauge(1, 40, 5, 2, 310);
+        // Saved while open, then after the reset that came after the fight.
+        for _ in 0..2 {
+            let w = &log.windows_between(0, 500)[0];
+            assert_eq!((w.outcome, w.missing, w.end_ms), (Some(Outcome::Missed), 5, Some(500)));
+            log.note_gauge(1, 40, 40, 0, 5_000);
+        }
+        assert!(log.open_window(1).is_none());
+    }
+
+    #[test]
+    fn a_break_takes_what_was_left_and_the_refill_is_no_stagger() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 150, 150);
+        log.note_hit(1, 7, 1, 100, false);
+        log.note_gauge(1, 150, 9, 2, 110);
+        log.note_hit(1, 7, 2, 200, false);
+        log.note_break(1, 210);
+        log.note_gauge(1, 150, 150, 2, 300);
+        assert!(log.open_window(1).is_none(), "a refill opens no window");
+        let w = &log.windows_between(0, 1000)[0];
+        assert_eq!(w.outcome, Some(Outcome::Break));
+        assert_eq!(w.hits.iter().map(|h| h.value).sum::<u32>(), 150);
+        assert_eq!(w.hits[1].value, 9);
+    }
+
+    #[test]
+    fn a_dot_tick_never_takes_a_remembered_hit() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_hit(1, 7, 1, 100, false);
+        log.note_hit(1, 8, 2, 105, true);
+        log.note_gauge(1, 40, 30, 2, 110);
+        log.note_hit(1, 8, 2, 200, true);
+        log.note_gauge(1, 40, 25, 2, 210);
+        let hits = &log.windows_between(0, 1000)[0].hits;
+        assert_eq!((hits[0].actor, hits[0].skill, hits[0].ambiguous), (7, 1, false));
+        assert_eq!((hits[1].actor, hits[1].skill), (8, 2), "with none remembered, the tick is");
+    }
+
+    #[test]
+    fn another_actors_hit_since_the_last_update_is_ambiguous() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_hit(1, 7, 1, 100, false);
+        log.note_hit(1, 8, 2, 105, false);
+        log.note_gauge(1, 40, 30, 2, 110);
+        log.note_hit(1, 8, 2, 200, false);
+        log.note_gauge(1, 40, 20, 2, 210);
+        let hits = &log.windows_between(0, 1000)[0].hits;
+        assert_eq!((hits[0].actor, hits[0].ambiguous), (8, true));
+        assert_eq!((hits[1].actor, hits[1].ambiguous), (8, false));
+    }
+
+    #[test]
+    fn a_deduction_with_no_hit_is_unknowns_and_an_old_hit_is_not_taken() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_gauge(1, 40, 30, 2, 100);
+        log.note_hit(1, 7, 1, 200, false);
+        log.note_gauge(1, 40, 20, 2, 200 + PENDING_HIT_MAX_AGE_MS + 1);
+        let hits = &log.windows_between(0, i64::MAX)[0].hits;
+        assert_eq!(hits.iter().map(|h| (h.actor, h.value)).collect::<Vec<_>>(), vec![(0, 10), (0, 10)]);
+    }
+
+    #[test]
+    fn a_death_misses_the_window_and_forgets_the_gauge() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_hit(1, 7, 1, 100, false);
+        log.note_gauge(1, 40, 30, 2, 110);
+        log.note_gone(1, 500);
+        assert!(log.gauge(1).is_none());
+        let w = &log.windows_between(0, 1000)[0];
+        assert_eq!((w.outcome, w.missing, w.end_ms), (Some(Outcome::Missed), 30, Some(500)));
+    }
+
+    #[test]
+    fn a_new_max_is_a_new_starting_value() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        log.note_gauge(1, 60, 40, 0, 100);
+        assert_eq!(log.gauge(1), Some((60, 40, Some(0))));
+        assert!(log.open_window(1).is_none());
+        log.note_hit(1, 7, 1, 200, false);
+        log.note_gauge(1, 60, 30, 2, 210);
+        let w = log.open_window(1).unwrap();
+        assert_eq!((w.hits[0].value, w.incomplete), (10, true), "40 of 60 is not a full gauge");
+    }
+
+    #[test]
+    fn windows_round_trip() {
+        let json = serde_json::json!([{
+            "entity": 54651, "mobCode": 2310471, "max": 40, "start": 43900, "end": 56454,
+            "result": "missed", "missing": 5,
+            "hits": [{"t": 55751, "actor": 5336, "skill": 12090243, "value": 35}]
+        }]);
+        let w: Vec<StaggerWindow> = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(w[0].result, Outcome::Missed);
+        assert!(!w[0].incomplete && !w[0].hits[0].ambiguous);
+        assert_eq!(serde_json::to_value(&w).unwrap(), json);
+    }
+}
