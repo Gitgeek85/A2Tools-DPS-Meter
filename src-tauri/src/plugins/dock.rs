@@ -30,6 +30,10 @@ pub const OWN_WINDOW_KEY: &str = "dpsMeter.pluginsOwnWindow";
 /// The dock's key where plugin windows keep their place and size: `_` is no
 /// plugin id's, so it never meets one.
 pub const PLACE_ID: &str = "_dock";
+/// The tabs that were open when the dock's × closed it: they come back with
+/// it, whichever plugin brings it back (a widget double-clicked brought only
+/// its own tab, 2026-10-23).
+const CLOSED_WITH_KEY: &str = "dpsMeter.pluginDockClosedWith";
 
 /// The plugin a call from window `label` is for. A plugin's own window is its
 /// plugin's, whatever the call says; the dock's calls name their plugin,
@@ -105,7 +109,18 @@ pub fn sync(app: &tauri::AppHandle, focus: Option<&str>) {
         }
         return;
     }
-    let visible = !shown_members(app).is_empty();
+    let shown = shown_members(app);
+    // Back after its ×: the tabs it closed with come back too.
+    let closed_with = listed(app, CLOSED_WITH_KEY);
+    if !shown.is_empty() && !closed_with.is_empty() {
+        if let Some(state) = app.try_state::<AppState>() {
+            state.settings.set(CLOSED_WITH_KEY, "[]");
+        }
+        for id in closed_with.iter().filter(|id| members.contains(id) && !shown.contains(id)) {
+            super::remember_window(app, id, Some("shown"));
+        }
+    }
+    let visible = !shown.is_empty();
     let Some(window) = window else {
         // Built off the calling thread: on Windows, building a window from a
         // synchronous command deadlocks.
@@ -216,6 +231,10 @@ pub fn dock_fold(window: tauri::WebviewWindow, height: Option<f64>) -> Result<()
 /// keep running, as with a plugin window's ×.
 #[tauri::command]
 pub fn dock_close(app: tauri::AppHandle) {
+    let open = shown_members(&app);
+    if let Some(state) = app.try_state::<AppState>() {
+        state.settings.set(CLOSED_WITH_KEY, &serde_json::to_string(&open).unwrap_or_default());
+    }
     for id in members(&app) {
         super::remember_window(&app, &id, Some("hidden"));
     }
