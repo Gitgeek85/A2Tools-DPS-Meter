@@ -11,31 +11,33 @@
 //! comes first, and ends with a break (`00 03 02`), or as missed: a reset to
 //! full without a break, the boss dying or leaving, or the fight ending.
 //!
-//! Each deduction goes to the hit that caused it. The server writes a hit as
-//! one block: the `04 38` record with its value, then entries of the same hit
-//! with none, its effects, and then the gauge's new state. Over all 36
-//! deductions in a solo capture of 2026-10-22 (Templar, Transcendent Bakarma
-//! and the two minibosses before it), the `05 E0` came straight after the hit
-//! that caused it, with only that hit's own effects in between. So the last
-//! hit with a value on an entity is remembered, and that entity's next gauge
-//! update takes it, whether or not it is a deduction:
+//! Each deduction goes to the hit that caused it. The server sends the hits
+//! on an entity as a batch, the `04 38` records with their values and their
+//! effects, and then the gauge's new state, one `05 E0` per hit that took
+//! stagger, in the hits' order:
 //!
 //! - a hit that takes stagger comes with entries of its own skill and actor
 //!   that carry no value (switch 0): Punishment two, Pummel's first strike
 //!   one. Procs never have them (Punishing Benediction 0 of 78 times,
-//!   Theostones, Flash Rampage). A proc can land between the hit and the
-//!   update: Poach, then Punishing Benediction, then the gauge 104 to 94
-//!   (2026-10-22, Shaman Kumbahum). So the last hit that got such entries
-//!   wins over a later one that did not. Before each of the 50 deductions in
-//!   the two captures of that day there was exactly one such hit;
-//! - a DoT tick (`05 38`) is remembered only when no hit is: `05 38` is also
-//!   an effect inside a hit's block, and must not take a deduction from it;
-//! - a deduction with no hit remembered (a lost packet, an opcode not read)
-//!   goes to actor 0, "unknown", so a window's deductions always add up to
-//!   what the gauge lost;
-//! - a hit with a value from another actor since the last update marks the
-//!   deduction `ambiguous`: never seen solo, it shows a party's
-//!   misattributions rather than hiding them.
+//!   Theostones, Flash Rampage). These hits, "marked", take the batch's
+//!   deductions in turn. Solo the update follows its hit, but a proc can land
+//!   in between: Poach, then Punishing Benediction, then the gauge 104 to 94
+//!   (Shaman Kumbahum, 2026-10-22). In a party several players' hits come
+//!   first: Judgment and a Chanter's hit, then the gauge 947 to 942 and 940
+//!   (Enhanced Harcon, the same evening, five players). Over that dungeon's
+//!   789 deductions each skill then took one value every time (Punishment
+//!   35, Pummel 3, as solo), but for the last of a break, which takes what is
+//!   left; taking the batch's last hit instead, 18% of them went astray;
+//! - with no marked hit left, the batch's last hit not yet taken does, and
+//!   when the batch has hits of more than one actor that is `ambiguous`;
+//! - a DoT tick (`05 38`) counts only when the batch has no hit: `05 38` is
+//!   also an effect inside a hit's block, and must not take a deduction;
+//! - a deduction with no hit (a lost packet, an opcode not read) goes to
+//!   actor 0, "unknown", so a window's deductions always add up to what the
+//!   gauge lost.
+//!
+//! The next hit after an update starts a new batch: a marked hit that took
+//! nothing (the gauge locked, before a mechanic boss's phase) is dropped.
 //!
 //! The status byte is kept and logged but decides nothing beyond when a
 //! window opens: its meaning is read from three monsters only. See
@@ -142,15 +144,42 @@ struct PendingHit {
     ambiguous: bool,
 }
 
-/// The hits on an entity since its gauge last moved.
+/// A hit in a batch.
 #[derive(Debug, Clone, Copy)]
+struct BatchHit {
+    hit: PendingHit,
+    dot: bool,
+    /// Entries of its own with no value followed it: it took stagger.
+    marked: bool,
+    /// A deduction has gone to it.
+    taken: bool,
+}
+
+/// At most this many hits are kept per batch (a party's batch has a dozen).
+const MAX_BATCH_HITS: usize = 64;
+
+/// The hits on an entity since its gauge last moved (see the module's notes).
+#[derive(Debug, Clone, Default)]
 struct Pending {
-    /// The last hit with a value (a DoT tick only when there was none). Its
-    /// `ambiguous` says whether another actor hit since the update.
-    last: PendingHit,
-    /// The last hit that its own entries with no value followed: the one
-    /// that took stagger, where there is one.
-    marked: Option<PendingHit>,
+    hits: Vec<BatchHit>,
+    /// An update came after the last hit: the next hit starts a new batch.
+    updated: bool,
+}
+
+impl Pending {
+    /// The hit a deduction goes to: the first marked one not yet taken, else
+    /// the last one not yet taken.
+    fn take(&mut self) -> Option<PendingHit> {
+        if let Some(h) = self.hits.iter_mut().find(|h| h.marked && !h.taken) {
+            h.taken = true;
+            return Some(h.hit);
+        }
+        let first_actor = self.hits.iter().find(|h| !h.dot).map(|h| h.hit.actor);
+        let several = self.hits.iter().any(|h| !h.dot && Some(h.hit.actor) != first_actor);
+        let h = self.hits.iter_mut().rev().find(|h| !h.taken)?;
+        h.taken = true;
+        Some(PendingHit { ambiguous: several, ..h.hit })
+    }
 }
 
 /// Every gauge the meter knows of, the hits waiting for their update, and
@@ -186,23 +215,28 @@ impl StaggerLog {
         if !self.gauges.contains_key(&entity) {
             return;
         }
-        let before = self.pending.get(&entity).filter(|p| ms - p.last.ms <= PENDING_HIT_MAX_AGE_MS).copied();
-        if dot && before.is_some() {
+        let p = self.pending.entry(entity).or_default();
+        let stale = p.hits.last().is_some_and(|h| ms - h.hit.ms > PENDING_HIT_MAX_AGE_MS);
+        if p.updated || stale {
+            *p = Pending::default();
+        }
+        if dot && !p.hits.is_empty() {
             return;
         }
-        let ambiguous = before.is_some_and(|p| p.last.ambiguous || p.last.actor != actor);
-        let last = PendingHit { ms, actor, skill, ambiguous };
-        self.pending.insert(entity, Pending { last, marked: before.and_then(|p| p.marked) });
+        if p.hits.len() >= MAX_BATCH_HITS {
+            p.hits.remove(0);
+        }
+        let hit = PendingHit { ms, actor, skill, ambiguous: false };
+        p.hits.push(BatchHit { hit, dot, marked: false, taken: false });
     }
 
-    /// An entry of a hit with no value (`04 38` switch 0): when it is of the
-    /// last hit's own actor and skill, that hit is the one that took stagger.
+    /// An entry of a hit with no value (`04 38` switch 0): the batch's last
+    /// hit of its actor and skill is one that took stagger.
     pub fn note_hit_entry(&mut self, entity: i32, actor: i32, skill: i32) {
         if let Some(p) = self.pending.get_mut(&entity)
-            && p.last.actor == actor
-            && p.last.skill == skill
+            && let Some(h) = p.hits.iter_mut().rev().find(|h| !h.dot && h.hit.actor == actor && h.hit.skill == skill)
         {
-            p.marked = Some(p.last);
+            h.marked = true;
         }
     }
 
@@ -216,7 +250,9 @@ impl StaggerLog {
     /// | `max` changes (60/40 after a wipe)| a new starting value, no deduction   |
     /// | unchanged, status `02`/`03`       | the gauge is active: a window opens  |
     pub fn note_gauge(&mut self, entity: i32, max: u32, rest: u32, status: u8, ms: i64) {
-        let hit = self.take_pending(entity, ms);
+        if let Some(p) = self.pending.get_mut(&entity) {
+            p.updated = true;
+        }
         let active = matches!(status, 2 | 3);
         let Some(g) = self.gauges.get_mut(&entity) else {
             // No spawn seen: this sets the starting value. Below full, what
@@ -240,6 +276,7 @@ impl StaggerLog {
             return;
         }
         if rest < g.rest {
+            let hit = take_hit(&mut self.pending, entity, ms);
             let value = g.rest - rest;
             let incomplete = !g.baseline;
             let w = g.open.get_or_insert_with(|| open_window(entity, max, g.rest, ms, incomplete));
@@ -274,7 +311,7 @@ impl StaggerLog {
     /// The gauge broke, `05 E0 <entity> 00 03 02`: the remembered hit took
     /// what was left.
     pub fn note_break(&mut self, entity: i32, ms: i64) {
-        let hit = self.take_pending(entity, ms);
+        let hit = take_hit(&mut self.pending, entity, ms);
         let Some(g) = self.gauges.get_mut(&entity) else {
             return;
         };
@@ -348,19 +385,21 @@ impl StaggerLog {
         out
     }
 
-    /// The hit that took what the gauge lost: the last one with entries of
-    /// its own, else the last.
-    fn take_pending(&mut self, entity: i32, ms: i64) -> Option<PendingHit> {
-        let p = self.pending.remove(&entity).filter(|p| ms - p.last.ms <= PENDING_HIT_MAX_AGE_MS)?;
-        let mut hit = p.marked.filter(|m| ms - m.ms <= PENDING_HIT_MAX_AGE_MS).unwrap_or(p.last);
-        hit.ambiguous |= p.last.ambiguous;
-        Some(hit)
-    }
-
     fn push_closed(&mut self, w: Window, ms: i64) {
         self.closed.retain(|c| c.end_ms.is_some_and(|e| e >= ms - WINDOW_RETENTION_MS));
         self.closed.push(w);
     }
+}
+
+/// The hit a deduction from `entity`'s gauge goes to (`Pending::take`); none
+/// when its batch is older than a fight's idle gap.
+fn take_hit(pending: &mut HashMap<i32, Pending>, entity: i32, ms: i64) -> Option<PendingHit> {
+    let p = pending.get_mut(&entity)?;
+    p.updated = true;
+    if p.hits.last().is_some_and(|h| ms - h.hit.ms > PENDING_HIT_MAX_AGE_MS) {
+        return None;
+    }
+    p.take()
 }
 
 fn open_window(entity: i32, max: u32, rest: u32, ms: i64, incomplete: bool) -> Window {
@@ -508,6 +547,43 @@ mod tests {
         log.note_gauge(1, 150, 59, 2, 310);
         let hits = &log.windows_between(0, 1000)[0].hits;
         assert_eq!(hits.iter().map(|h| (h.skill, h.value)).collect::<Vec<_>>(), vec![(12130141, 10), (12090243, 35)]);
+    }
+
+    /// Enhanced Harcon, 2026-10-22: Judgment (Templar 9348) and a Chanter's
+    /// hit (10868), each with an entry of its own, then the gauge 947 to 942
+    /// and 940. Judgment takes 5 as it does solo.
+    #[test]
+    fn a_partys_batch_gives_its_deductions_to_the_marked_hits_in_turn() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 1200, 947);
+        log.note_hit(1, 9348, 12730001, 100, false);
+        log.note_hit(1, 9348, 12240340, 250, false);
+        log.note_hit_entry(1, 9348, 12240340);
+        log.note_hit(1, 10868, 18050230, 250, false);
+        log.note_hit_entry(1, 10868, 18050230);
+        log.note_gauge(1, 1200, 942, 2, 250);
+        log.note_gauge(1, 1200, 940, 2, 250);
+        let hits = &log.windows_between(0, 1000)[0].hits;
+        assert_eq!(
+            hits.iter().map(|h| (h.actor, h.skill, h.value, h.ambiguous)).collect::<Vec<_>>(),
+            vec![(9348, 12240340, 5, false), (10868, 18050230, 2, false)]
+        );
+    }
+
+    #[test]
+    fn a_marked_hit_that_took_nothing_is_dropped_with_its_batch() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 40, 40);
+        // Locked: a marked hit, an update that moves nothing.
+        log.note_hit(1, 7, 12090243, 100, false);
+        log.note_hit_entry(1, 7, 12090243);
+        log.note_gauge(1, 40, 40, 3, 150);
+        log.note_hit(1, 7, 12010340, 200, false);
+        log.note_hit(1, 7, 12100340, 300, false);
+        log.note_hit_entry(1, 7, 12100340);
+        log.note_gauge(1, 40, 30, 2, 300);
+        let hits = &log.windows_between(0, 1000)[0].hits;
+        assert_eq!(hits.iter().map(|h| (h.skill, h.value)).collect::<Vec<_>>(), vec![(12100340, 10)]);
     }
 
     #[test]

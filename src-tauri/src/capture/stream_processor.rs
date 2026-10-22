@@ -4834,6 +4834,29 @@ mod tests {
         assert_eq!(hits(&stagger(&storage)[0]), vec![(12205, 12130141, 10)]);
     }
 
+    /// Enhanced Harcon (entity 65183, `9f fd 03`), 2026-10-22 19:50:25.961, a
+    /// party of five: a Punishing Benediction proc, Judgment (Templar 9348,
+    /// `84 49`) with an entry of its own, a Chanter's hit (10868, `f4 54`)
+    /// with one, then the gauge 947 to 942 and 940. In turn: Judgment 5, as
+    /// solo, and the Chanter 2.
+    #[test]
+    fn a_partys_hits_take_the_updates_after_them_in_turn() {
+        let (storage, mut p) = processor();
+        stream(&mut p, 0, &[
+            "1405e09ffd030301b0040000b303000002",
+            "2404389ffd0306008449913ec2001d02000002af70e04b01000000ee64990a0100",
+            "2404389ffd0306008449d4c5ba001c03040002db46f54801000000ee6494640100",
+            "1f04389ffd0300008449d4c5ba001c02dc46f54801000000ee640100",
+            "2c04389ffd032600f454b66c13012a020800020629966b01000000ee64ad990103aa0faa0faa0f0100",
+            "1f04389ffd030000f454b66c13012a020729966b01000000ee640100",
+            "1405e09ffd030301b0040000ae03000002",
+            "1405e09ffd030301b0040000ac03000002",
+        ]);
+        let w = &stagger(&storage)[0];
+        assert_eq!(hits(w), vec![(9348, 12240340, 5), (10868, 18050230, 2)]);
+        assert!(w.hits.iter().all(|h| !h.ambiguous));
+    }
+
     /// TCP does not respect the server's blocks: the hit and the update can
     /// come in two reads.
     #[test]
