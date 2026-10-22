@@ -431,6 +431,7 @@ mod tests {
                     regen: 0,
                     damage_received: 0,
                     hits_received: 0,
+                    received: None,
                     dbid,
                     server_id: 0,
                     // Deliberately wrong, so the tests show it being recomputed

@@ -125,7 +125,12 @@
       "deaths": "Morts",
       "avgDps": "DPS moyen",
       "peakDps": "DPS max",
-      "peakDpsTip": "Le DPS le plus élevé sur 5 secondes du combat"
+      "peakDpsTip": "Le DPS le plus élevé sur 5 secondes du combat",
+      "blockedTaken": "Bloqué (Parfait)",
+      "blockedTakenTip": "Des coups subis : bloqués au bouclier, et entre parenthèses bloqués parfaitement",
+      "parriedTaken": "Paré (Parfait)",
+      "parriedTakenTip": "Des coups subis : parés, et entre parenthèses parés parfaitement",
+      "parryRateTip": "De vos coups : la part que la cible a parée"
     },
     "titleFor": "pour",
     "titleVs": "contre",

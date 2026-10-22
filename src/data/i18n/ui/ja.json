@@ -125,7 +125,12 @@
       "deaths": "死亡回数",
       "avgDps": "平均DPS",
       "peakDps": "最大DPS",
-      "peakDpsTip": "戦闘中の任意の5秒間で最も高いDPS"
+      "peakDpsTip": "戦闘中の任意の5秒間で最も高いDPS",
+      "blockedTaken": "ブロック（完璧）",
+      "blockedTakenTip": "受けた攻撃のうち、盾でブロックした割合。括弧内は完璧ブロック",
+      "parriedTaken": "パリィ（完璧）",
+      "parriedTakenTip": "受けた攻撃のうち、パリィした割合。括弧内は完璧パリィ",
+      "parryRateTip": "自分の攻撃のうち、対象にパリィされた割合"
     },
     "titleFor": "対象",
     "titleVs": "対",

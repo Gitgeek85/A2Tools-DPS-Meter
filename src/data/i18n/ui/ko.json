@@ -125,7 +125,12 @@
       "deaths": "사망",
       "avgDps": "평균 DPS",
       "peakDps": "최고 DPS",
-      "peakDpsTip": "전투 중 5초 동안의 최고 DPS"
+      "peakDpsTip": "전투 중 5초 동안의 최고 DPS",
+      "blockedTaken": "방패 막기 (완벽)",
+      "blockedTakenTip": "받은 공격 중 방패로 막은 비율, 괄호 안은 완벽 막기",
+      "parriedTaken": "패리 (완벽)",
+      "parriedTakenTip": "받은 공격 중 패리한 비율, 괄호 안은 완벽 패리",
+      "parryRateTip": "내 공격 중 대상이 패리한 비율"
     },
     "titleFor": "대상",
     "titleVs": "vs",

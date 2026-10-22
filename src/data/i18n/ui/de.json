@@ -125,7 +125,12 @@
       "deaths": "Tode",
       "avgDps": "Ø DPS",
       "peakDps": "Spitzen-DPS",
-      "peakDpsTip": "Die höchsten DPS über beliebige 5 Sekunden des Kampfes"
+      "peakDpsTip": "Die höchsten DPS über beliebige 5 Sekunden des Kampfes",
+      "blockedTaken": "Geblockt (Perfekt)",
+      "blockedTakenTip": "Von den erlittenen Treffern: mit dem Schild geblockt, in Klammern perfekt geblockt",
+      "parriedTaken": "Pariert (Perfekt)",
+      "parriedTakenTip": "Von den erlittenen Treffern: pariert, in Klammern perfekt pariert",
+      "parryRateTip": "Von deinen Treffern: der Anteil, den das Ziel pariert hat"
     },
     "titleFor": "für",
     "titleVs": "gegen",

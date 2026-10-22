@@ -1143,12 +1143,14 @@ impl DpsCalculator {
                     .or_else(|| heal_class(id));
                     // Aggregate per-actor stats across all targets
                     let (mut party_heal, mut regen, mut dmg_recv, mut hits_recv) = (0i64, 0i64, 0i64, 0i32);
+                    let mut received = crate::entity::details_context::ReceivedHits::default();
                     for td in combat_data.values() {
                         if let Some(ad) = td.actors.get(&id) {
                             party_heal += ad.party_heal;
                             regen += ad.regen;
                             dmg_recv += ad.damage_received;
                             hits_recv += ad.hits_received;
+                            received.add(ad.received);
                         }
                     }
                     // Joined on the unobscured nickname: the roster is keyed by
@@ -1164,6 +1166,7 @@ impl DpsCalculator {
                         regen,
                         damage_received: dmg_recv,
                         hits_received: hits_recv,
+                        received: Some(received),
                         dbid: roster.map(|m| m.dbid).unwrap_or(0),
                         server_id: roster.map(|m| m.server_id).unwrap_or(0),
                         is_supporter: supporters.contains(
@@ -1355,12 +1358,14 @@ impl DpsCalculator {
                 ).map_or(0, |jc| jc.class_prefix());
                 // Aggregate per-actor stats
                 let (mut party_heal, mut regen, mut dmg_recv, mut hits_recv) = (0i64, 0i64, 0i64, 0i32);
+                    let mut received = crate::entity::details_context::ReceivedHits::default();
                 for td in combat_data.values() {
                     if let Some(ad) = td.actors.get(&id) {
                         party_heal += ad.party_heal;
                         regen += ad.regen;
                         dmg_recv += ad.damage_received;
                         hits_recv += ad.hits_received;
+                            received.add(ad.received);
                     }
                 }
                 DetailsActorSummary {
@@ -1372,6 +1377,7 @@ impl DpsCalculator {
                     regen,
                     damage_received: dmg_recv,
                     hits_received: hits_recv,
+                        received: Some(received),
                     // The live view is never uploaded: nothing here reads the
                     // identity a saved record keeps.
                     dbid: 0,

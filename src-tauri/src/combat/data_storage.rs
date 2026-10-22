@@ -332,6 +332,8 @@ pub struct ActorCombatData {
     pub regen: i64,
     pub damage_received: i64,
     pub hits_received: i32,
+    /// How the hits taken were met (shield blocks, parries...).
+    pub received: crate::entity::details_context::ReceivedHits,
     pub last_damage_time: i64,
     pub job: Option<JobClass>,
     /// Skills keyed by (raw_skill_code, is_dot)
@@ -346,6 +348,7 @@ impl ActorCombatData {
         self.regen += other.regen;
         self.damage_received += other.damage_received;
         self.hits_received += other.hits_received;
+        self.received.add(other.received);
         self.last_damage_time = self.last_damage_time.max(other.last_damage_time);
         self.job = self.job.or(other.job);
         for (key, skill) in other.skills {
@@ -365,6 +368,7 @@ impl ActorCombatData {
             regen: 0,
             damage_received: 0,
             hits_received: 0,
+            received: Default::default(),
             last_damage_time: 0,
             job: None,
             skills: HashMap::new(),
@@ -392,6 +396,7 @@ impl TargetCombatData {
                 regen: actor.regen,
                 damage_received: actor.damage_received,
                 hits_received: actor.hits_received,
+                received: actor.received,
                 last_damage_time: actor.last_damage_time,
                 job: actor.job,
                 skills: actor.skills.iter().map(|(&key, skill)| (key, skill.clone_light())).collect(),
@@ -1414,6 +1419,7 @@ impl DataStorage {
                 if let Some(actor_data) = fight_of(&mut inner, resolved_target, Some(actor_id)) {
                     actor_data.damage_received += dmg;
                     actor_data.hits_received += 1;
+                    actor_data.received.note(pdp.specials());
                 }
             }
             return;

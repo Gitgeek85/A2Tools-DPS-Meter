@@ -125,7 +125,12 @@
       "deaths": "死亡次数",
       "avgDps": "平均 DPS",
       "peakDps": "峰值 DPS",
-      "peakDpsTip": "战斗中任意 5 秒内的最高 DPS"
+      "peakDpsTip": "战斗中任意 5 秒内的最高 DPS",
+      "blockedTaken": "盾挡（完美）",
+      "blockedTakenTip": "受到的攻击中用盾牌挡下的比例，括号内为完美盾挡",
+      "parriedTaken": "格挡（完美）",
+      "parriedTakenTip": "受到的攻击中格挡的比例，括号内为完美格挡",
+      "parryRateTip": "你的攻击中被目标格挡的比例"
     },
     "titleFor": "针对",
     "titleVs": "vs",

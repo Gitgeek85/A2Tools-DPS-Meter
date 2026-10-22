@@ -207,6 +207,28 @@ const createDetailsUI = ({
     return formatDamageCompact(sum);
   };
 
+  // How the hits taken were met (the record's `received`, meter 2.0.76 on),
+  // for the selected players or the whole party: the share blocked with a
+  // shield or parried, then in brackets the share perfectly so. "-" when no
+  // player's record has the counts (older fights) or nobody took a hit.
+  const hitsTakenMet = (d, kind) => {
+    const ids = d !== lastUnfilteredDetails && Array.isArray(selectedAttackerIds) && selectedAttackerIds.length
+      ? selectedAttackerIds
+      : [...detailsActors.keys()];
+    let hits = 0, met = 0, perfect = 0, counted = false;
+    for (const id of ids) {
+      const actor = detailsActors.get(Number(id));
+      const r = actor?.received;
+      if (!r) continue;
+      counted = true;
+      hits += Number(actor.hitsReceived) || 0;
+      met += Number(kind === "block" ? r.shieldBlock : r.parry) || 0;
+      perfect += Number(kind === "block" ? r.perfectBlock : r.perfectParry) || 0;
+    }
+    if (!counted || hits <= 0) return "-";
+    return `${pctText((met * 100) / hits)} (${pctText((perfect * 100) / hits)})`;
+  };
+
   // Every hit's time (ms into the fight) and its share of the skill's
   // damage, from the skills' own hit times.
   const hitsOf = (skills, keep = () => true) => {
@@ -289,6 +311,18 @@ const createDetailsUI = ({
       getValue: (d) => peakDps(d),
     },
     { key: "details.stats.damageReceived", fallback: "Damage Taken", getValue: (d) => damageTaken(d) },
+    {
+      key: "details.stats.blockedTaken",
+      fallback: "Blocked (Perfect)",
+      tip: ["details.stats.blockedTakenTip", "Of the hits taken: blocked with a shield, and in brackets perfectly blocked"],
+      getValue: (d) => hitsTakenMet(d, "block"),
+    },
+    {
+      key: "details.stats.parriedTaken",
+      fallback: "Parried (Perfect)",
+      tip: ["details.stats.parriedTakenTip", "Of the hits taken: parried, and in brackets perfectly parried"],
+      getValue: (d) => hitsTakenMet(d, "parry"),
+    },
     { key: "details.stats.deaths", fallback: "Deaths", getValue: (d) => deathCount(d) },
     { key: "details.skills.hits", fallback: "Hits", getValue: (d) => formatCount(d?.totalHits) },
     { key: "details.stats.critRate", fallback: "Crit Rate", getValue: (d) => pctText(d?.totalCritPct) },
@@ -300,7 +334,12 @@ const createDetailsUI = ({
     },
     { key: "details.stats.perfectRate", fallback: "Perfect Rate", getValue: (d) => pctText(d?.totalPerfectPct) },
     { key: "details.stats.doubleRate", fallback: "Double Rate", getValue: (d) => pctText(d?.totalDoublePct) },
-    { key: "details.stats.parryRate", fallback: "Parry Rate", getValue: (d) => pctText(d?.totalParryPct) },
+    {
+      key: "details.stats.parryRate",
+      fallback: "Parry Rate",
+      tip: ["details.stats.parryRateTip", "Of your hits: the share the target parried"],
+      getValue: (d) => pctText(d?.totalParryPct),
+    },
     { key: "details.stats.regen", fallback: "Regen", getValue: (d) => formatDamageCompact(d?.totalRegen) },
   ];
 
