@@ -42,6 +42,10 @@ pub struct PersonalData {
     pub hps: f64,
     #[serde(default)]
     pub heal_amount: f64,
+    /// Stagger taken off the shown targets' gauges in the fight
+    /// (`combat::stagger`), for the meter's Stagger mode.
+    #[serde(default)]
+    pub stagger: i64,
 }
 
 impl PersonalData {
@@ -60,6 +64,7 @@ impl PersonalData {
             is_others: false,
             hps: 0.0,
             heal_amount: 0.0,
+            stagger: 0,
         }
     }
 
@@ -78,6 +83,7 @@ impl PersonalData {
             is_others: false,
             hps: 0.0,
             heal_amount: 0.0,
+            stagger: 0,
         }
     }
 
@@ -93,6 +99,7 @@ impl PersonalData {
     pub fn merge_from(&mut self, other: &PersonalData) {
         self.amount += other.amount;
         self.heal_amount += other.heal_amount;
+        self.stagger += other.stagger;
         for (skill_code, other_skill) in &other.analyzed_data {
             let existing = self.analyzed_data.entry(*skill_code).or_insert_with(|| {
                 AnalyzedSkill::new(*skill_code, other_skill.skill_name.clone())

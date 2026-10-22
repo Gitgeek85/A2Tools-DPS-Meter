@@ -10,8 +10,10 @@
       "ariaBoth": "Affiche les DPS et les dégâts totaux",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "ÉTOUR",
       "ariaHps": "Affiche les soins par seconde",
-      "ariaHeal": "Affiche les soins totaux"
+      "ariaHeal": "Affiche les soins totaux",
+      "ariaStagger": "Affiche l'étourdissement infligé à la jauge du boss"
     }
   },
   "details": {
@@ -172,6 +174,25 @@
         "replaced": "Remplacé par un nouveau niveau"
       }
     },
+    "stagger": {
+      "title": "Étourdissement",
+      "unknownActor": "Inconnu",
+      "unknownSkill": "Compétence inconnue",
+      "older": "Aucune donnée d'étourdissement pour ce combat (enregistré par une version antérieure).",
+      "loading": "Chargement...",
+      "none": "Aucune jauge d'étourdissement n'a été entamée dans ce combat.",
+      "incomplete": "Son début n'a pas été vu : l'étourdissement antérieur manque.",
+      "ambiguous": "Peut appartenir à un autre joueur : quelqu'un d'autre a frappé au même moment.",
+      "ambiguousCount": "{n} coup(s) peuvent appartenir à un autre joueur.",
+      "value": "{n} d'étourdissement",
+      "ended": {
+        "break": "Brisée après {secs} s",
+        "reset": "Manquée : il restait {missing} sur {max}",
+        "death": "Vaincu avant la rupture : il restait {missing} sur {max}",
+        "despawn": "Parti avant la rupture : il restait {missing} sur {max}",
+        "fightEnd": "Encore ouverte à la fin du combat : il restait {missing} sur {max}"
+      }
+    },
     "fightTimeline": "Chronologie du combat",
     "replay": {
       "label": "Relecture",
@@ -273,6 +294,7 @@
     "odyleEnergy": "Énergie d'Odyle",
     "showTtk": "Afficher le temps de kill estimé",
     "showHealModes": "Afficher les soins dans le bouton DPS/DMG",
+    "showStaggerMode": "Afficher l'étourdissement dans le bouton DPS/DMG",
     "showTotalDps": "Afficher le total du groupe",
     "roundDps": "Abréger le DPS en milliers (13k)",
     "showDpsSuffix": "Ajouter /s au DPS",
@@ -523,6 +545,7 @@
       "detailsMonitor": "Ouvre la fenêtre Détails sur l'écran choisi et l'y garde.",
       "showTtk": "À côté du chronomètre, une estimation de la durée totale du combat contre le boss.",
       "showHealModes": "Le bouton DPS/DMG du compteur affiche aussi les soins par seconde et les soins totaux.",
+      "showStaggerMode": "Le bouton DPS/DMG du compteur affiche aussi l'étourdissement que chaque joueur a retiré de la jauge du boss.",
       "showTotalDps": "Une barre sous les lignes avec le DPS et les dégâts de tout le groupe.",
       "roundDps": "13 412 s'affiche 13k.",
       "showSuspendBtn": "Un bouton sur le compteur qui arrête la lecture du trafic du jeu jusqu'à ce que tu appuies à nouveau.",

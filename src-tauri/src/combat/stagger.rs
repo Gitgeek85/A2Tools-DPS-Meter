@@ -55,6 +55,21 @@ pub enum Outcome {
     Missed,
 }
 
+/// Why a window ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum End {
+    Break,
+    /// Back to full without a break (a wipe).
+    Reset,
+    /// The entity died (`42 36` flag 3): beaten before the gauge broke.
+    Death,
+    /// The entity left the world (`42 36` flag 7).
+    Despawn,
+    /// Still open when the fight ended (or closed only after it).
+    FightEnd,
+}
+
 /// One deduction from a gauge.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hit {
@@ -78,6 +93,7 @@ pub struct Window {
     /// `None` while open.
     pub end_ms: Option<i64>,
     pub outcome: Option<Outcome>,
+    pub ended: Option<End>,
     /// What was left of the gauge when it was missed; 0 on a break.
     pub missing: u32,
     /// The gauge's starting value was not seen (no spawn, and its first
@@ -210,7 +226,7 @@ impl StaggerLog {
                 g.baseline = true;
                 if !refilled && let Some(mut w) = g.open.take() {
                     let left = w.rests.last().map_or(w.max, |r| r.1);
-                    close(&mut w, ms, Outcome::Missed, left);
+                    close(&mut w, ms, End::Reset, left);
                     self.push_closed(w, ms);
                 }
             } else if let Some(w) = g.open.as_mut() {
@@ -237,20 +253,20 @@ impl StaggerLog {
             w.hits.push(hit_of(hit, ms, g.rest));
         }
         w.rests.push((ms, 0));
-        close(&mut w, ms, Outcome::Break, 0);
+        close(&mut w, ms, End::Break, 0);
         g.rest = 0;
         g.broken = true;
         self.push_closed(w, ms);
     }
 
-    /// The entity died or left: an open window is missed, and the gauge is
-    /// forgotten with it.
-    pub fn note_gone(&mut self, entity: i32, ms: i64) {
+    /// The entity died (`died`) or left: an open window is missed, and the
+    /// gauge is forgotten with it.
+    pub fn note_gone(&mut self, entity: i32, ms: i64, died: bool) {
         self.pending.remove(&entity);
         if let Some(mut g) = self.gauges.remove(&entity)
             && let Some(mut w) = g.open.take()
         {
-            close(&mut w, ms, Outcome::Missed, g.rest);
+            close(&mut w, ms, if died { End::Death } else { End::Despawn }, g.rest);
             self.push_closed(w, ms);
         }
     }
@@ -292,7 +308,7 @@ impl StaggerLog {
                 if w.end_ms.is_none_or(|e| e > end_ms) {
                     w.hits.retain(|h| h.ms <= end_ms);
                     let left = w.rest_at(end_ms);
-                    close(&mut w, end_ms, Outcome::Missed, left);
+                    close(&mut w, end_ms, End::FightEnd, left);
                 }
                 w
             })
@@ -318,6 +334,7 @@ fn open_window(entity: i32, max: u32, rest: u32, ms: i64, incomplete: bool) -> W
         start_ms: ms,
         end_ms: None,
         outcome: None,
+        ended: None,
         missing: 0,
         incomplete,
         hits: Vec::new(),
@@ -325,9 +342,11 @@ fn open_window(entity: i32, max: u32, rest: u32, ms: i64, incomplete: bool) -> W
     }
 }
 
-fn close(w: &mut Window, ms: i64, outcome: Outcome, left: u32) {
+fn close(w: &mut Window, ms: i64, ended: End, left: u32) {
+    let outcome = if ended == End::Break { Outcome::Break } else { Outcome::Missed };
     w.end_ms = Some(ms);
     w.outcome = Some(outcome);
+    w.ended = Some(ended);
     w.missing = if outcome == Outcome::Missed { left } else { 0 };
 }
 
@@ -355,6 +374,10 @@ pub struct StaggerWindow {
     pub start: i64,
     pub end: i64,
     pub result: Outcome,
+    /// Why it ended: a missed window was reset, its entity died or left, or
+    /// the fight ended first. Absent in a window saved before it was kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ended: Option<End>,
     /// What was left of the gauge when it was missed; 0 on a break.
     #[serde(default)]
     pub missing: u32,
@@ -395,7 +418,7 @@ mod tests {
         log.note_gauge(1, 40, 5, 2, 310);
         log.note_gauge(1, 40, 40, 0, 900);
         let w = &log.windows_between(0, 1000)[0];
-        assert_eq!(w.outcome, Some(Outcome::Missed));
+        assert_eq!((w.outcome, w.ended), (Some(Outcome::Missed), Some(End::Reset)));
         assert_eq!(w.missing, 5);
         assert_eq!(w.start_ms, 100);
         assert_eq!(w.end_ms, Some(900));
@@ -411,7 +434,7 @@ mod tests {
         // Saved while open, then after the reset that came after the fight.
         for _ in 0..2 {
             let w = &log.windows_between(0, 500)[0];
-            assert_eq!((w.outcome, w.missing, w.end_ms), (Some(Outcome::Missed), 5, Some(500)));
+            assert_eq!((w.outcome, w.ended, w.missing, w.end_ms), (Some(Outcome::Missed), Some(End::FightEnd), 5, Some(500)));
             log.note_gauge(1, 40, 40, 0, 5_000);
         }
         assert!(log.open_window(1).is_none());
@@ -478,10 +501,10 @@ mod tests {
         log.note_spawn(1, 40, 40);
         log.note_hit(1, 7, 1, 100, false);
         log.note_gauge(1, 40, 30, 2, 110);
-        log.note_gone(1, 500);
+        log.note_gone(1, 500, true);
         assert!(log.gauge(1).is_none());
         let w = &log.windows_between(0, 1000)[0];
-        assert_eq!((w.outcome, w.missing, w.end_ms), (Some(Outcome::Missed), 30, Some(500)));
+        assert_eq!((w.outcome, w.ended, w.missing, w.end_ms), (Some(Outcome::Missed), Some(End::Death), 30, Some(500)));
     }
 
     #[test]
@@ -501,7 +524,7 @@ mod tests {
     fn windows_round_trip() {
         let json = serde_json::json!([{
             "entity": 54651, "mobCode": 2310471, "max": 40, "start": 43900, "end": 56454,
-            "result": "missed", "missing": 5,
+            "result": "missed", "ended": "reset", "missing": 5,
             "hits": [{"t": 55751, "actor": 5336, "skill": 12090243, "value": 35}]
         }]);
         let w: Vec<StaggerWindow> = serde_json::from_value(json.clone()).unwrap();

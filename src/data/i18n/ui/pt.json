@@ -10,8 +10,10 @@
       "ariaBoth": "Mostrando DPS e dano total",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "ATORD",
       "ariaHps": "Mostrando cura por segundo",
-      "ariaHeal": "Mostrando cura total"
+      "ariaHeal": "Mostrando cura total",
+      "ariaStagger": "Mostrando o atordoamento causado à barra do chefe"
     }
   },
   "details": {
@@ -172,6 +174,25 @@
         "replaced": "Substituído por um novo nível"
       }
     },
+    "stagger": {
+      "title": "Atordoamento",
+      "unknownActor": "Desconhecido",
+      "unknownSkill": "Habilidade desconhecida",
+      "older": "Sem dados de atordoamento para este combate (gravado por uma versão anterior).",
+      "loading": "Carregando...",
+      "none": "Nenhuma barra de atordoamento foi reduzida neste combate.",
+      "incomplete": "O início não foi visto: falta o atordoamento anterior.",
+      "ambiguous": "Pode ser de outro jogador: outra pessoa acertou ao mesmo tempo.",
+      "ambiguousCount": "{n} golpe(s) podem ser de outro jogador.",
+      "value": "{n} de atordoamento",
+      "ended": {
+        "break": "Quebrada após {secs} s",
+        "reset": "Falhou: restavam {missing} de {max}",
+        "death": "Derrotado antes da quebra: restavam {missing} de {max}",
+        "despawn": "Sumiu antes da quebra: restavam {missing} de {max}",
+        "fightEnd": "Ainda aberta no fim do combate: restavam {missing} de {max}"
+      }
+    },
     "fightTimeline": "Linha do tempo da luta",
     "replay": {
       "label": "Replay",
@@ -273,6 +294,7 @@
     "odyleEnergy": "Energia de Odyle",
     "showTtk": "Mostrar tempo estimado para matar",
     "showHealModes": "Mostrar cura no botão DPS/DMG",
+    "showStaggerMode": "Mostrar atordoamento no botão DPS/DMG",
     "showTotalDps": "Mostrar total do grupo",
     "roundDps": "Abreviar DPS em milhares (13k)",
     "showDpsSuffix": "Adicionar /s ao DPS",
@@ -523,6 +545,7 @@
       "detailsMonitor": "Abre a janela de detalhes na tela escolhida e a mantém lá.",
       "showTtk": "Ao lado do cronômetro, uma estimativa de quanto durará toda a luta contra o chefe.",
       "showHealModes": "O botão DPS/DMG do medidor também alterna para cura por segundo e cura total.",
+      "showStaggerMode": "O botão DPS/DMG do medidor também mostra quanto cada jogador reduziu a barra de atordoamento do chefe.",
       "showTotalDps": "Uma barra sob as linhas com o DPS e o dano de todo o grupo.",
       "roundDps": "13.412 aparece como 13k.",
       "showSuspendBtn": "Um botão no medidor que para de ler o tráfego do jogo até você apertar de novo.",

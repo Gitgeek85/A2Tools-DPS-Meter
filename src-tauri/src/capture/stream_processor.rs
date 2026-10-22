@@ -4834,6 +4834,7 @@ mod tests {
         storage.mark_entity_dead(MINIBOSS);
         let w = &stagger(&storage)[0];
         assert_eq!((w.result, w.missing, w.end), (crate::combat::stagger::Outcome::Missed, 140, 5_000));
+        assert_eq!(w.ended, Some(crate::combat::stagger::End::Death));
         assert_eq!(storage.stagger_gauge(MINIBOSS), None);
     }
 }

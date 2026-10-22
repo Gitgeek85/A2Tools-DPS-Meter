@@ -908,6 +908,22 @@ impl DataStorage {
         self.stagger.lock().gauge(entity)
     }
 
+    /// Stagger taken off the gauges of `entities` by each actor from
+    /// `start_ms` to `end_ms`, summons as themselves (the meter resolves
+    /// them as it does damage). Deductions with no actor are left out.
+    pub fn stagger_totals(&self, start_ms: i64, end_ms: i64, entities: &HashSet<i32>) -> HashMap<i32, i64> {
+        let mut out: HashMap<i32, i64> = HashMap::new();
+        for w in self.stagger.lock().windows_between(start_ms, end_ms) {
+            if !entities.contains(&w.entity) {
+                continue;
+            }
+            for h in w.hits.iter().filter(|h| h.actor != 0 && h.ms >= start_ms && h.ms <= end_ms) {
+                *out.entry(h.actor).or_default() += h.value as i64;
+            }
+        }
+        out
+    }
+
     #[cfg(test)]
     pub fn stagger_open_window(&self, entity: i32) -> Option<crate::combat::stagger::Window> {
         self.stagger.lock().open_window(entity).cloned()
@@ -928,6 +944,7 @@ impl DataStorage {
                 start: w.start_ms - start_ms,
                 end: w.end_ms.unwrap_or(end_ms) - start_ms,
                 result: w.outcome.unwrap_or(crate::combat::stagger::Outcome::Missed),
+                ended: w.ended,
                 missing: w.missing,
                 incomplete: w.incomplete,
                 hits: w
@@ -1697,7 +1714,7 @@ impl DataStorage {
         }
         inner.boss_hp_now.remove(&entity_id);
         inner.boss_hp_sent.remove(&entity_id);
-        self.stagger.lock().note_gone(entity_id, now_ms());
+        self.stagger.lock().note_gone(entity_id, now_ms(), true);
         inner.dead_entity_ids.insert(entity_id);
         inner.hp_floored_ids.remove(&entity_id);
         inner.death_log.push_back((entity_id, now_ms(), None));
@@ -1803,7 +1820,7 @@ impl DataStorage {
     /// `id` left the world. Only a linked summon is marked: see
     /// `Inner::despawned_summon_ids`. A stagger window open on it is missed.
     pub fn note_despawn(&self, id: i32) {
-        self.stagger.lock().note_gone(id, now_ms());
+        self.stagger.lock().note_gone(id, now_ms(), false);
         let mut inner = self.inner.write();
         if inner.summon_storage.contains_key(&id) {
             inner.despawned_summon_ids.insert(id);

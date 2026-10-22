@@ -39,7 +39,7 @@ use a2tools_dps_meter_lib::capture::stream_processor::{
 use a2tools_dps_meter_lib::combat::data_storage::DataStorage;
 use a2tools_dps_meter_lib::combat::dps_calculator::DpsCalculator;
 use a2tools_dps_meter_lib::combat::ping_tracker::PingTracker;
-use a2tools_dps_meter_lib::combat::stagger::{Outcome, StaggerWindow};
+use a2tools_dps_meter_lib::combat::stagger::{End, Outcome, StaggerWindow};
 use a2tools_dps_meter_lib::entity::fight_record::FightRecord;
 use a2tools_dps_meter_lib::i18n::lookup::{NpcLookup, SkillLookup};
 use a2tools_dps_meter_lib::share::read_capture;
@@ -90,6 +90,8 @@ struct Replay {
     updated: BTreeMap<i32, usize>,
     bundled_updates: usize,
     spawns: usize,
+    /// The most stagger the meter's rows showed, per target and actor.
+    meter_stagger: BTreeMap<(i32, i32), i64>,
 }
 
 fn replay(path: &str) -> Replay {
@@ -132,6 +134,7 @@ fn replay(path: &str) -> Replay {
         updated: BTreeMap::new(),
         bundled_updates: 0,
         spawns: 0,
+        meter_stagger: BTreeMap::new(),
     };
     let mut next_tick = i64::MIN;
     for p in &packets {
@@ -175,7 +178,13 @@ fn replay(path: &str) -> Replay {
 
         if p.captured_at_ms >= next_tick {
             next_tick = p.captured_at_ms + 1_000;
-            calc.lock().get_dps();
+            let dps = calc.lock().get_dps();
+            for (&actor, row) in &dps.map {
+                if row.stagger > 0 {
+                    let seen = out.meter_stagger.entry((dps.target_id, actor)).or_default();
+                    *seen = (*seen).max(row.stagger);
+                }
+            }
             save(false);
         }
     }
@@ -286,6 +295,7 @@ fn stagger_report() {
         let hits: usize = r.windows.iter().map(|w| w.hits.len()).sum();
         println!("summary deductions {hits}, ambiguous {ambiguous}, to actor 0 {unknown}");
         println!("summary differing from the Templar table: {deviations:?}");
+        println!("summary the meter's Stagger mode at most (target, actor): {:?}", r.meter_stagger);
         let silent: Vec<&i32> = r.gauge_spawns.keys().filter(|e| !r.updated.contains_key(e)).collect();
         println!("summary gauge spawns with no 05 E0 later (false matches?): {silent:?}");
     }
@@ -306,6 +316,8 @@ fn the_solo_capture_of_2026_10_22() {
     assert_eq!(on_boss.len(), 1, "{windows:?}");
     let w = on_boss[0];
     assert_eq!((w.result, w.missing, w.max), (Outcome::Missed, 5, 40), "{w:?}");
+    // The reset came 5 s after the fight's last hit: the fight saw it open.
+    assert_eq!(w.ended, Some(End::FightEnd), "{w:?}");
     assert!(w.hits.iter().any(|h| h.skill == 12090243 && h.value == 35 && h.actor == 5336), "{w:?}");
     assert!(!w.incomplete);
 
@@ -316,6 +328,12 @@ fn the_solo_capture_of_2026_10_22() {
         assert_eq!(w.hits.iter().map(|h| h.value).sum::<u32>(), w.max, "{w:?}");
         assert!(!w.incomplete, "{w:?}");
     }
+    // A miniboss broken once and killed during its next window.
+    assert!(r.windows.iter().any(|w| w.ended == Some(End::Death) && w.entity != 54651));
+    // The meter's Stagger mode: Punishment's 35 on Bakarma, and each
+    // miniboss's broken gauge and more.
+    assert_eq!(r.meter_stagger.get(&(54651, 5336)), Some(&35));
+    assert!(r.meter_stagger.get(&(24627, 5336)).is_some_and(|&v| v >= 150), "{:?}", r.meter_stagger);
     for w in &r.windows {
         assert!(w.hits.iter().all(|h| !h.ambiguous && h.actor != 0), "{w:?}");
         assert!(table_deviations(w).is_empty(), "{w:?}");

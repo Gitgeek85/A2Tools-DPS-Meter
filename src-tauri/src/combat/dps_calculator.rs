@@ -378,6 +378,19 @@ impl DpsCalculator {
             }
         }
 
+        // Stagger taken off the shown targets' gauges in the fight, on the
+        // rows of who took it (Stagger mode). Before the orphan merges
+        // below, which carry it along with the damage.
+        let stagger_targets: HashSet<i32> = target_ids.iter().copied().collect();
+        for (actor_id, stagger) in self.data_storage.stagger_totals(fight_start, fight_end, &stagger_targets) {
+            let raw_uid = summon_resolver::resolve(actor_id, &summon_data);
+            let nickname = resolve_nickname(raw_uid, &nickname_data, &summon_data);
+            let uid = *canonical.get(&nickname).unwrap_or(&raw_uid);
+            if let Some(entry) = dps_data.map.get_mut(&uid) {
+                entry.stagger += stagger;
+            }
+        }
+
         // Orphan summon inference: attribute an entity that is really a summon to
         // the player who owns it, for the summons the spawn packet never covered.
         //
@@ -1239,7 +1252,7 @@ impl DpsCalculator {
 
     /// The buffs and debuffs of the fight on `target_id` so far, for Details
     /// on a live fight: the same tracks a saved fight keeps, on the actors the
-    /// saved record would list.
+    /// saved record would list; and its stagger windows, as a saved fight's.
     pub fn live_fight_buffs(&self, target_id: i32) -> Option<crate::combat::fight_buffs::LiveFightBuffs> {
         let target = self.data_storage.get_target_snapshot_light(target_id)?;
         let (start, end) = (target.first_damage_time, target.last_damage_time.max(target.first_damage_time));
@@ -1250,6 +1263,7 @@ impl DpsCalculator {
             start_time_ms: start,
             duration_ms: end - start,
             buffs: crate::combat::fight_buffs::for_fight(&self.data_storage, target_id, start, end, actors),
+            stagger: self.data_storage.fight_stagger(start, end),
         })
     }
 

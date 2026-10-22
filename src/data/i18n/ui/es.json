@@ -10,8 +10,10 @@
       "ariaBoth": "Mostrando DPS y daño total",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "ATUR",
       "ariaHps": "Mostrando curación por segundo",
-      "ariaHeal": "Mostrando curación total"
+      "ariaHeal": "Mostrando curación total",
+      "ariaStagger": "Mostrando el aturdimiento infligido a la barra del jefe"
     }
   },
   "details": {
@@ -172,6 +174,25 @@
         "replaced": "Sustituido por un nivel nuevo"
       }
     },
+    "stagger": {
+      "title": "Aturdimiento",
+      "unknownActor": "Desconocido",
+      "unknownSkill": "Habilidad desconocida",
+      "older": "No hay datos de aturdimiento para este combate (grabado con una versión anterior).",
+      "loading": "Cargando...",
+      "none": "En este combate no se redujo ninguna barra de aturdimiento.",
+      "incomplete": "No se vio su inicio: falta el aturdimiento anterior.",
+      "ambiguous": "Puede ser de otro jugador: alguien más golpeó al mismo tiempo.",
+      "ambiguousCount": "{n} golpe(s) pueden ser de otro jugador.",
+      "value": "{n} de aturdimiento",
+      "ended": {
+        "break": "Roto tras {secs} s",
+        "reset": "Fallido: quedaban {missing} de {max}",
+        "death": "Derrotado antes de romperse: quedaban {missing} de {max}",
+        "despawn": "Desapareció antes de romperse: quedaban {missing} de {max}",
+        "fightEnd": "Aún abierto al terminar el combate: quedaban {missing} de {max}"
+      }
+    },
     "fightTimeline": "Cronología del combate",
     "replay": {
       "label": "Repetición",
@@ -273,6 +294,7 @@
     "odyleEnergy": "Energía de Odyle",
     "showTtk": "Mostrar tiempo estimado para matar",
     "showHealModes": "Mostrar curación en el botón DPS/DMG",
+    "showStaggerMode": "Mostrar aturdimiento en el botón DPS/DMG",
     "showTotalDps": "Mostrar total del grupo",
     "roundDps": "Abreviar DPS en miles (13k)",
     "showDpsSuffix": "Añadir /s al DPS",
@@ -523,6 +545,7 @@
       "detailsMonitor": "Abre la ventana de detalles en la pantalla elegida y la mantiene allí.",
       "showTtk": "Junto al temporizador, una estimación de cuánto durará todo el combate contra el jefe.",
       "showHealModes": "El botón DPS/DMG del medidor también muestra la curación por segundo y la curación total.",
+      "showStaggerMode": "El botón DPS/DMG del medidor también muestra cuánto redujo cada jugador la barra de aturdimiento del jefe.",
       "showTotalDps": "Una barra bajo las filas con el DPS y el daño de todo el grupo.",
       "roundDps": "13.412 se muestra como 13k.",
       "showSuspendBtn": "Un botón en el medidor que deja de leer el tráfico del juego hasta que lo pulses de nuevo.",

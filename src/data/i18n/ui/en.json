@@ -10,8 +10,10 @@
       "ariaBoth": "Showing DPS and total damage",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "STAG",
       "ariaHps": "Showing raw healing per second (excludes passive regen)",
-      "ariaHeal": "Showing total raw healing (excludes passive regen)"
+      "ariaHeal": "Showing total raw healing (excludes passive regen)",
+      "ariaStagger": "Showing stagger dealt to the boss's gauge"
     }
   },
   "details": {
@@ -177,6 +179,25 @@
         "replaced": "Replaced by a new level"
       }
     },
+    "stagger": {
+      "title": "Stagger",
+      "unknownActor": "Unknown",
+      "unknownSkill": "Unknown skill",
+      "older": "No stagger data for this fight (recorded by an older version).",
+      "loading": "Loading...",
+      "none": "No stagger gauge was worn down in this fight.",
+      "incomplete": "Its start was not seen: earlier stagger is missing.",
+      "ambiguous": "May belong to another player: someone else hit at the same time.",
+      "ambiguousCount": "{n} hit(s) may belong to another player.",
+      "value": "{n} stagger",
+      "ended": {
+        "break": "Broken after {secs} s",
+        "reset": "Missed: {missing} of {max} left",
+        "death": "Defeated before the break: {missing} of {max} left",
+        "despawn": "Left before the break: {missing} of {max} left",
+        "fightEnd": "Still open when the fight ended: {missing} of {max} left"
+      }
+    },
     "fightTimeline": "Fight timeline",
     "replay": {
       "label": "Replay",
@@ -283,6 +304,7 @@
     "odyleEnergy": "Odyle Energy",
     "showTtk": "Show time to kill estimate",
     "showHealModes": "Show healing in the DPS/DMG button",
+    "showStaggerMode": "Show stagger in the DPS/DMG button",
     "showTotalDps": "Show party total",
     "roundDps": "Shorten DPS to thousands (13k)",
     "showDpsSuffix": "Add /s to DPS",
@@ -535,6 +557,7 @@
       "detailsMonitor": "Opens the Details window on the chosen display and keeps it there.",
       "showTtk": "Beside the battle timer, an estimate of how long the whole boss fight will take.",
       "showHealModes": "The DPS/DMG button on the meter also cycles through healing per second and total healing.",
+      "showStaggerMode": "The DPS/DMG button on the meter also shows the stagger each player took off the boss's gauge.",
       "showTotalDps": "A bar under the rows with the party's combined DPS and damage.",
       "roundDps": "13,412 shows as 13k.",
       "showSuspendBtn": "A button on the meter that stops reading game traffic until you press it again.",

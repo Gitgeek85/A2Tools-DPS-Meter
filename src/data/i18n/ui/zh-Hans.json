@@ -10,8 +10,10 @@
       "ariaBoth": "显示 DPS 和总伤害",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "破防",
       "ariaHps": "显示每秒治疗量",
-      "ariaHeal": "显示总治疗量"
+      "ariaHeal": "显示总治疗量",
+      "ariaStagger": "显示对首领破防条造成的削减"
     }
   },
   "details": {
@@ -172,6 +174,25 @@
         "replaced": "被新等级替换"
       }
     },
+    "stagger": {
+      "title": "破防",
+      "unknownActor": "未知",
+      "unknownSkill": "未知技能",
+      "older": "此战斗没有破防数据（由旧版本记录）。",
+      "loading": "加载中...",
+      "none": "此战斗中没有削减任何破防条。",
+      "incomplete": "未看到起始值：缺少之前的破防数值。",
+      "ambiguous": "可能属于其他玩家：同一时间有其他人命中。",
+      "ambiguousCount": "{n} 次命中可能属于其他玩家。",
+      "value": "破防 {n}",
+      "ended": {
+        "break": "{secs} 秒后破防",
+        "reset": "失败：{max} 中剩余 {missing}",
+        "death": "破防前被击败：{max} 中剩余 {missing}",
+        "despawn": "破防前消失：{max} 中剩余 {missing}",
+        "fightEnd": "战斗结束时仍未完成：{max} 中剩余 {missing}"
+      }
+    },
     "fightTimeline": "战斗时间线",
     "replay": {
       "label": "回放",
@@ -278,6 +299,7 @@
     "odyleEnergy": "奥德能量",
     "showTtk": "显示预计击杀时间",
     "showHealModes": "在 DPS/DMG 按钮中显示治疗",
+    "showStaggerMode": "在 DPS/DMG 按钮中显示破防",
     "showTotalDps": "显示队伍总计",
     "roundDps": "DPS 以千为单位显示 (13k)",
     "showDpsSuffix": "DPS 后显示 /s",
@@ -530,6 +552,7 @@
       "detailsMonitor": "在所选显示器上打开详情窗口并保持在那里。",
       "showTtk": "在战斗计时器旁显示整场首领战的预计时长。",
       "showHealModes": "计量器上的 DPS/DMG 按钮也会切换到每秒治疗量和总治疗量。",
+      "showStaggerMode": "计量器上的 DPS/DMG 按钮也会显示每位玩家削减首领破防条的数值。",
       "showTotalDps": "在各行下方显示队伍总 DPS 和总伤害的条。",
       "roundDps": "13,412 显示为 13k。",
       "showSuspendBtn": "在计量器上显示一个按钮，按下后停止读取游戏流量，再按一次恢复。",

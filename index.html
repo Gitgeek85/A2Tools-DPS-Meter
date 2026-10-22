@@ -407,6 +407,7 @@
                 <div class="buffSegmented ftlSectionToggles" role="group" aria-label="Show sections" data-i18n-aria-label="details.showSections">
                   <button class="buffChip" type="button" aria-pressed="true" data-ftl-section="dps" data-i18n="details.sectionChart">Chart</button>
                   <button class="buffChip" type="button" aria-pressed="true" data-ftl-section="buffs" data-i18n="details.buffs.title">Buffs</button>
+                  <button class="buffChip" type="button" aria-pressed="true" data-ftl-section="stagger" data-i18n="details.stagger.title">Stagger</button>
                   <button class="buffChip" type="button" aria-pressed="true" data-ftl-section="casts" data-i18n="details.casts">Casts</button>
                 </div>
               </div>
@@ -422,6 +423,10 @@
                 </div>
                 <div class="ftlGroup ftlGroupBuffs">
                   <div class="buffBody"></div>
+                </div>
+                <div class="ftlGroup ftlGroupStagger">
+                  <div class="ftlGroupTitle" data-i18n="details.stagger.title">Stagger</div>
+                  <div class="staggerBody"></div>
                 </div>
                 <div class="ftlGroup ftlGroupCasts">
                   <div class="ftlGroupTitle" data-i18n="details.casts">Casts</div>
@@ -693,6 +698,13 @@
                     <span class="settingsToggleLabel settingsLabel" data-i18n="settings.showHealModes" title="The DPS/DMG button on the meter also cycles through healing per second and total healing." data-i18n-title="settings.tips.showHealModes">Show healing in the DPS/DMG button</span>
                     <span class="settingsToggleControl">
                       <input type="checkbox" class="showHealModesCheckbox" checked />
+                      <span class="settingsToggleTrack" aria-hidden="true"></span>
+                    </span>
+                  </label>
+                  <label class="settingsToggle">
+                    <span class="settingsToggleLabel settingsLabel" data-i18n="settings.showStaggerMode" title="The DPS/DMG button on the meter also shows the stagger each player took off the boss's gauge." data-i18n-title="settings.tips.showStaggerMode">Show stagger in the DPS/DMG button</span>
+                    <span class="settingsToggleControl">
+                      <input type="checkbox" class="showStaggerModeCheckbox" checked />
                       <span class="settingsToggleTrack" aria-hidden="true"></span>
                     </span>
                   </label>
@@ -1617,6 +1629,7 @@
     <script src="/src/js/meter.js"></script>
     <script src="/src/js/skillIcons.js"></script>
     <script src="/src/js/buffTimeline.js"></script>
+    <script src="/src/js/staggerPanel.js"></script>
     <script src="/src/js/details.js?v=2021a"></script>
     <script src="/src/js/fightReplay.js"></script>
     <script src="/src/js/history.js?v=2018a"></script>
