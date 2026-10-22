@@ -100,3 +100,8 @@ pub fn never_activate(_window: &tauri::WebviewWindow, _before: Option<isize>) {}
 
 /// Windows only (see the Windows version).
 pub fn give_front_back(_window: &tauri::WebviewWindow, _before: Option<isize>) {}
+
+/// Whether a tray icon can be shown: not here.
+pub fn tray_supported() -> bool {
+    false
+}

@@ -114,29 +114,15 @@
       return i;
     };
 
-    // The reviewed plugins' icons (Lucide) and colours (a hue), by id. Any
-    // other plugin shows its first letter.
-    const OFFICIAL_ICONS = {
-      "pet-souls": ["paw-print", 25],
-      "event-timers": ["alarm-clock", 45],
-      ping: ["activity", 140],
-      cooldowns: ["hourglass", 265],
-      checklist: ["list-checks", 185],
-      "heal-alert": ["heart-pulse", 350],
-      "mantra-watch": ["orbit", 215],
-      "hidden-cubes": ["box", 300],
-    };
-
     // A square with the plugin's icon or first letter, in its colour (from
     // its id when it has none), so a long list scans by shape and colour
     // before reading.
+    // (The icons: pluginIcons.js.)
     const mark = (id, name) => {
-      let hash = 0;
-      for (const ch of String(id)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-      const [glyph, hue] = OFFICIAL_ICONS[id] || [];
-      const m = el("span", "pluginMark", glyph ? null : (String(name || id).trim()[0] || "?").toUpperCase());
+      const { glyph, hue, letter } = window.A2_PLUGIN_ICON(id, name);
+      const m = el("span", "pluginMark", glyph ? null : letter);
       if (glyph) m.append(icon(glyph));
-      m.style.setProperty("--mark-hue", String(hue ?? hash % 360));
+      m.style.setProperty("--mark-hue", String(hue));
       m.setAttribute("aria-hidden", "true");
       return m;
     };
@@ -441,6 +427,12 @@
           ]) {
             options.append(option(t(key, text), (ids || []).includes(p.id), (hide) => run(invoke("plugin_set_hide", { id: p.id, when, hide }))));
           }
+          // In the plugin dock with the others, or a window of its own.
+          options.append(option(
+            t("settings.plugins.inDock", "In the plugin dock (off: its own window)"),
+            !(view.ownWindow || []).includes(p.id),
+            (docked) => run(invoke("plugin_set_docked", { id: p.id, docked }).then(() => invoke("plugin_list"))),
+          ));
           details.push(options, permissionList(p.permissions || [], true));
         }
         const actions = el("div", "pluginDetailActions");

@@ -2,7 +2,7 @@
 //! (`capture::supply_requests`) goes to a2tools.app, whose Profiteer shows
 //! each server's current requests and what they're worth.
 //!
-//! On by default (`dpsMeter.shareSupplyRequests`, "false" turns it off). What
+//! Off by default (`dpsMeter.shareSupplyRequests`, "true" turns it on). What
 //! is sent: the server, and each board whose window is open (its id, tab,
 //! window and request ids). Not the character, nor its progress on them.
 //!
@@ -64,7 +64,7 @@ pub fn spawn(app: tauri::AppHandle) {
             tokio::time::sleep(CHECK).await;
             let Some(state) = app.try_state::<AppState>() else { continue };
             let Some((next, boards)) = state.data_storage.supply_requests_since(seq) else { continue };
-            if state.settings.get(SETTING_KEY).as_deref() == Some("false") {
+            if state.settings.get(SETTING_KEY).as_deref() != Some("true") {
                 seq = next;
                 continue;
             }

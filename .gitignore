@@ -36,6 +36,7 @@ settings.properties
 # The plugin windows' host page (src-tauri/src/plugins).
 !/public/plugin-host.html
 !/public/plugin-widget.html
+!/public/plugin-dock.html
 !/public/src/
 /public/src/*
 !/public/src/js/

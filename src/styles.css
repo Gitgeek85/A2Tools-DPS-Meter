@@ -556,6 +556,10 @@ body.linuxOverlay .meter {
 .header .headerBtns.hasSuspendBtn { gap: 6px; }
 .header .headerBtns .suspendBtn { color: rgba(255, 255, 255, 0.55); }
 .header .headerBtns .suspendBtn.isSuspended { color: #ff6b6b; }
+/* An update waiting (meter or plugins): green, until clicked. */
+.header .headerBtns .updatesBtn { color: #3ddc84; }
+.header .headerBtns .updatesBtn:hover { color: #7af0ae; }
+.header .headerBtns .updatesBtn[hidden] { display: none; }
 
 /* ---------- boss HP: the waterline ---------- */
 
