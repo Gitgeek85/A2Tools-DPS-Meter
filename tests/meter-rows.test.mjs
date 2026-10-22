@@ -56,3 +56,19 @@ test("stagger is a mode of the DPS/DMG button, read from each row, unless turned
   dps.showStaggerMode = true;
   assert.deepEqual(Array.from(dps.displayModes()), ["totalDamage", "both", "stagger"]);
 });
+
+test("in Stagger mode a row's tooltip lists its stagger by skill, most first", () => {
+  const dps = app("Mine");
+  const names = { 12090000: "Punishment", 12040000: "Pummel", 12120000: "Taunt" };
+  dps.i18n = { getSkillName: (code, fallback) => names[code] ?? fallback, t: (_, fallback) => fallback };
+  const [mine] = dps.buildRowsFromMapObject({
+    5: { ...row("Mine", 10), stagger: 70, staggerSkills: { 12040140: 15, 12090243: 35, 12120010: 20 } },
+  });
+  const details = dps.staggerTooltipDetails(mine);
+  assert.equal(details.mode, "stagger");
+  assert.deepEqual(Array.from(details.skills, (s) => [s.name, s.dmg, s.code]), [
+    ["Punishment", 35, 12090000],
+    ["Taunt", 20, 12120000],
+    ["Pummel", 15, 12040000],
+  ]);
+});

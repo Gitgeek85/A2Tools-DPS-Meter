@@ -59,6 +59,11 @@ const TEMPLAR_STAGGER: &[(i32, u32)] = &[
     (12060140, 5),  // Punishing Strike
     (12350130, 5),  // Warding Strike
     (12040140, 3),  // Pummel, first strike of the chain
+    (12010340, 0),  // Vicious Strike
+    (12020340, 0),  // Decisive Strike
+    (12030340, 0),  // Desperate Strike
+    (12340340, 0),  // Flash Rampage
+    (12730001, 0),  // Punishing Benediction (a proc)
 ];
 
 /// The packets in a buffer, bundles opened, as the stream processor walks

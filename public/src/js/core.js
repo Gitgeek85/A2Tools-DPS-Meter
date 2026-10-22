@@ -996,6 +996,25 @@ class DpsApp {
     return this.jobColorMap[String(job || "")] || "";
   }
 
+  /** A row's stagger by skill, most first, as the hover tooltip lists skills. */
+  staggerTooltipDetails(row) {
+    const name = (code) => {
+      // The record's code (12090243) names nothing; its family does (12090000).
+      for (const k of [code, code - (code % 10000), code - (code % 1000), code - (code % 100)]) {
+        const n = this.i18n?.getSkillName?.(k, "");
+        if (n) return n;
+      }
+      return code ? `#${code}` : this.i18n?.t?.("details.stagger.unknownSkill", "Unknown skill") ?? "Unknown skill";
+    };
+    const skills = Object.entries(row?.staggerSkills || {})
+      .map(([code, value]) => ({ code: Number(code), value: Number(value) || 0 }))
+      .filter((s) => s.value > 0)
+      .sort((a, b) => b.value - a.value || a.code - b.code)
+      .slice(0, 5)
+      .map((s) => ({ name: name(s.code), code: s.code - (s.code % 10000), dmg: s.value, job: row?.job }));
+    return { skills, state: "empty", mode: "stagger" };
+  }
+
   renderHoverTooltip(details, row, rowEl) {
     if (!this.hoverTooltipEl || !rowEl) return;
     const skills = Array.isArray(details?.skills) ? details.skills.slice(0, 5) : [];
@@ -1005,7 +1024,9 @@ class DpsApp {
       empty: "No skill data for this fight",
       error: "Could not load skills",
     }[tooltipState] || "No skill data for this fight";
-    const stateText = this.i18n?.t(`details.hoverTooltip.${tooltipState}`, stateFallback) ?? stateFallback;
+    const stateText = details?.mode === "stagger"
+      ? this.i18n?.t("details.stagger.none", "No stagger gauge was worn down in this fight.") ?? "No stagger gauge was worn down in this fight."
+      : this.i18n?.t(`details.hoverTooltip.${tooltipState}`, stateFallback) ?? stateFallback;
     const dps = Number(row?.dps) || 0;
     const dpsText = `${this.dpsFormatter.format(dps)}${this.i18n?.t("meter.dpsSuffix", "/s") ?? "/s"}`;
     const totalDamage = Number(row?.totalDamage) || 0;
@@ -1029,11 +1050,15 @@ class DpsApp {
     const tooltipNameHtml = row?.isSupporter
       ? `<span class="isSupporter">${tooltipName}</span>`
       : tooltipName;
+    const statsHtml = details?.mode === "stagger"
+      ? `<span>${this.i18n?.t("details.stagger.title", "Stagger") ?? "Stagger"}: ${Number(row?.stagger) || 0}</span>
+        <span>${this.i18n?.t("details.stats.totalDamage", "Total Damage") ?? "Total Damage"}: ${totalDamageText}</span>`
+      : `<span>${this.i18n?.t("header.display.dps", "DPS") ?? "DPS"}: ${dpsText}</span>
+        <span>${this.i18n?.t("details.stats.totalDamage", "Total Damage") ?? "Total Damage"}: ${totalDamageText}</span>`;
     this.hoverTooltipEl.innerHTML = `
       <div class="hoverDetailsTooltipHeader">${tooltipClassIcon}${tooltipNameHtml}</div>
       <div class="hoverDetailsTooltipStats">
-        <span>${this.i18n?.t("header.display.dps", "DPS") ?? "DPS"}: ${dpsText}</span>
-        <span>${this.i18n?.t("details.stats.totalDamage", "Total Damage") ?? "Total Damage"}: ${totalDamageText}</span>
+        ${statsHtml}
       </div>
       <div class="hoverDetailsTooltipSkills">${skillsHtml || `<div class="hoverDetailsTooltipSkill muted">${stateText}</div>`}</div>
     `;
@@ -1142,6 +1167,11 @@ class DpsApp {
     if (!Number.isFinite(rowId) || rowId <= 0) return;
     const rowEl = this.elList?.querySelector?.(`.item[data-row-id="${rowId}"]`);
     if (!rowEl) return;
+    // Stagger mode: the row carries its stagger by skill, nothing to ask for.
+    if (this.displayMode === "stagger") {
+      this.renderHoverTooltip(this.staggerTooltipDetails(row), row, rowEl);
+      return;
+    }
 
     const snapshot = this.getHoverTooltipSnapshot();
     const stored = this.hoverTooltipCacheByRowId.get(rowId);
@@ -1628,6 +1658,9 @@ class DpsApp {
       const healAmount = Math.trunc(Number(isObj ? value.healAmount : 0)) || 0;
       // Stagger taken off the target's gauge in the fight (combat/stagger.rs).
       const stagger = Math.trunc(Number(isObj ? value.stagger : 0)) || 0;
+      // The same by skill code, for the tooltip in Stagger mode.
+      const staggerSkills = isObj && value.staggerSkills && typeof value.staggerSkills === "object"
+        ? value.staggerSkills : {};
 
       // 소수점 한자리
       const contribRaw = isObj ? Number(value.damageContribution) : NaN;
@@ -1653,6 +1686,7 @@ class DpsApp {
         hps,
         healAmount,
         stagger,
+        staggerSkills,
         damageContribution,
         combatPower,
         gearScore,

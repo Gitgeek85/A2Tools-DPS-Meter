@@ -382,12 +382,13 @@ impl DpsCalculator {
         // rows of who took it (Stagger mode). Before the orphan merges
         // below, which carry it along with the damage.
         let stagger_targets: HashSet<i32> = target_ids.iter().copied().collect();
-        for (actor_id, stagger) in self.data_storage.stagger_totals(fight_start, fight_end, &stagger_targets) {
+        for ((actor_id, skill), stagger) in self.data_storage.stagger_totals(fight_start, fight_end, &stagger_targets) {
             let raw_uid = summon_resolver::resolve(actor_id, &summon_data);
             let nickname = resolve_nickname(raw_uid, &nickname_data, &summon_data);
             let uid = *canonical.get(&nickname).unwrap_or(&raw_uid);
             if let Some(entry) = dps_data.map.get_mut(&uid) {
                 entry.stagger += stagger;
+                *entry.stagger_skills.entry(skill).or_default() += stagger;
             }
         }
 
@@ -1253,17 +1254,29 @@ impl DpsCalculator {
     /// The buffs and debuffs of the fight on `target_id` so far, for Details
     /// on a live fight: the same tracks a saved fight keeps, on the actors the
     /// saved record would list; and its stagger windows, as a saved fight's.
-    pub fn live_fight_buffs(&self, target_id: i32) -> Option<crate::combat::fight_buffs::LiveFightBuffs> {
+    ///
+    /// `shown`: every target Details shows together (All targets), whose
+    /// timeline starts at the first of them. The stagger windows are those of
+    /// that whole span, on its time: the gauge can be on another target than
+    /// the first one listed (Shaman Kumbahum among his Brawlers, 2026-10-22).
+    pub fn live_fight_buffs(&self, target_id: i32, shown: &[i32]) -> Option<crate::combat::fight_buffs::LiveFightBuffs> {
         let target = self.data_storage.get_target_snapshot_light(target_id)?;
         let (start, end) = (target.first_damage_time, target.last_damage_time.max(target.first_damage_time));
         let details = self.get_hover_details(target_id, None);
         let actors: HashSet<i32> = details.skills.iter().map(|s| s.actor_id).collect();
+        let (mut span_start, mut span_end) = (start, end);
+        for &id in shown {
+            if let Some(t) = self.data_storage.get_target_snapshot_light(id) {
+                span_start = span_start.min(t.first_damage_time);
+                span_end = span_end.max(t.last_damage_time);
+            }
+        }
         Some(crate::combat::fight_buffs::LiveFightBuffs {
             target_id,
             start_time_ms: start,
             duration_ms: end - start,
             buffs: crate::combat::fight_buffs::for_fight(&self.data_storage, target_id, start, end, actors),
-            stagger: self.data_storage.fight_stagger(start, end),
+            stagger: self.data_storage.fight_stagger(span_start, span_end),
         })
     }
 

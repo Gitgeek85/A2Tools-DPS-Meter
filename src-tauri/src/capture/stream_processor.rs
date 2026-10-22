@@ -1589,6 +1589,11 @@ impl StreamProcessor {
             // Hit type 1 (Miss) and 6 (Resist) carry no damage: count them on
             // the skill and stop here, as the parser always did on these.
             if no_value {
+                // An entry of a hit with no value at all (switch 0) marks the
+                // hit before it as one that took stagger (`combat::stagger`).
+                if switch_value == 0 && !npc_skill {
+                    self.data_storage.note_stagger_hit_entry(target_value, actor_value, exact_skill_code as i32);
+                }
                 if !require_trusted && actor_value != target_value && !npc_skill {
                     if let Some(kind) = NoDamageHit::from_hit_type(dummy_type) {
                         let skill = self.normalize_skill_id(exact_skill_code as i32);
@@ -4808,6 +4813,25 @@ mod tests {
         let (storage, mut p) = processor();
         stream(&mut p, 0, &[MINIBOSS_SPAWN, "1405e0b3c0010301960000008c00000002"]);
         assert_eq!(hits(&stagger(&storage)[0]), vec![(0, 0, 10)]);
+    }
+
+    /// Shaman Kumbahum (entity 51518, `be 92 03`), 2026-10-22 19:40:21: in
+    /// one bundle Poach (player 12205, `ad 5f`) with three entries of its own
+    /// and no value, then a Punishing Benediction proc, then the gauge 104 to
+    /// 94. The 10 are Poach's: the proc has no entries of its own.
+    #[test]
+    fn a_proc_between_the_hit_and_the_update_does_not_take_its_stagger() {
+        let (storage, mut p) = processor();
+        stream(&mut p, 0, &[
+            "1405e0be92030301960000006800000002",
+            "260438be92032600ad5f5d17b90021020000024be94c48010000009e55c810012f0100",
+            "1f0438be92030000ad5f5d17b90021024ce94c48010000009e550100",
+            "1f0438be92030000ad5f5d17b90021024ee94c48010000009e550100",
+            "1f0438be92030000ad5f5d17b90021024fe94c48010000009e550100",
+            "240438be92030600ad5f913ec2002202000002af70e04b010000009e55aa070100",
+            "1405e0be92030301960000005e00000002",
+        ]);
+        assert_eq!(hits(&stagger(&storage)[0]), vec![(12205, 12130141, 10)]);
     }
 
     /// TCP does not respect the server's blocks: the hit and the update can

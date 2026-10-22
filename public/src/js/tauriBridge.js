@@ -403,7 +403,12 @@
     // durationMs, buffs }, or null.
     async getFightBuffs(targetId) {
       try {
-        return await invoke("get_fight_buffs", { targetId: Number(targetId) });
+        // Every target Details shows together: the stagger windows are those
+        // of their whole span (DpsCalculator::live_fight_buffs).
+        const dps = cachedDpsJson ? JSON.parse(cachedDpsJson) : null;
+        const targetIds = [...new Set((Array.isArray(dps?.detailTargetIds) ? dps.detailTargetIds : [])
+          .map(Number).filter((id) => id > 0))];
+        return await invoke("get_fight_buffs", { targetId: Number(targetId), targetIds });
       } catch (e) {
         console.error("[A2Tools] getFightBuffs error:", e);
         return null;

@@ -20,6 +20,14 @@
 //! hit with a value on an entity is remembered, and that entity's next gauge
 //! update takes it, whether or not it is a deduction:
 //!
+//! - a hit that takes stagger comes with entries of its own skill and actor
+//!   that carry no value (switch 0): Punishment two, Pummel's first strike
+//!   one. Procs never have them (Punishing Benediction 0 of 78 times,
+//!   Theostones, Flash Rampage). A proc can land between the hit and the
+//!   update: Poach, then Punishing Benediction, then the gauge 104 to 94
+//!   (2026-10-22, Shaman Kumbahum). So the last hit that got such entries
+//!   wins over a later one that did not. Before each of the 50 deductions in
+//!   the two captures of that day there was exactly one such hit;
 //! - a DoT tick (`05 38`) is remembered only when no hit is: `05 38` is also
 //!   an effect inside a hit's block, and must not take a deduction from it;
 //! - a deduction with no hit remembered (a lost packet, an opcode not read)
@@ -134,12 +142,23 @@ struct PendingHit {
     ambiguous: bool,
 }
 
+/// The hits on an entity since its gauge last moved.
+#[derive(Debug, Clone, Copy)]
+struct Pending {
+    /// The last hit with a value (a DoT tick only when there was none). Its
+    /// `ambiguous` says whether another actor hit since the update.
+    last: PendingHit,
+    /// The last hit that its own entries with no value followed: the one
+    /// that took stagger, where there is one.
+    marked: Option<PendingHit>,
+}
+
 /// Every gauge the meter knows of, the hits waiting for their update, and
 /// the windows.
 #[derive(Debug, Default)]
 pub struct StaggerLog {
     gauges: HashMap<i32, Gauge>,
-    pending: HashMap<i32, PendingHit>,
+    pending: HashMap<i32, Pending>,
     closed: Vec<Window>,
 }
 
@@ -167,12 +186,24 @@ impl StaggerLog {
         if !self.gauges.contains_key(&entity) {
             return;
         }
-        let before = self.pending.get(&entity).filter(|p| ms - p.ms <= PENDING_HIT_MAX_AGE_MS).copied();
+        let before = self.pending.get(&entity).filter(|p| ms - p.last.ms <= PENDING_HIT_MAX_AGE_MS).copied();
         if dot && before.is_some() {
             return;
         }
-        let ambiguous = before.is_some_and(|p| p.ambiguous || p.actor != actor);
-        self.pending.insert(entity, PendingHit { ms, actor, skill, ambiguous });
+        let ambiguous = before.is_some_and(|p| p.last.ambiguous || p.last.actor != actor);
+        let last = PendingHit { ms, actor, skill, ambiguous };
+        self.pending.insert(entity, Pending { last, marked: before.and_then(|p| p.marked) });
+    }
+
+    /// An entry of a hit with no value (`04 38` switch 0): when it is of the
+    /// last hit's own actor and skill, that hit is the one that took stagger.
+    pub fn note_hit_entry(&mut self, entity: i32, actor: i32, skill: i32) {
+        if let Some(p) = self.pending.get_mut(&entity)
+            && p.last.actor == actor
+            && p.last.skill == skill
+        {
+            p.marked = Some(p.last);
+        }
     }
 
     /// A gauge update, `05 E0 <entity> 03 01 <max> <rest> <status>`.
@@ -317,8 +348,13 @@ impl StaggerLog {
         out
     }
 
+    /// The hit that took what the gauge lost: the last one with entries of
+    /// its own, else the last.
     fn take_pending(&mut self, entity: i32, ms: i64) -> Option<PendingHit> {
-        self.pending.remove(&entity).filter(|p| ms - p.ms <= PENDING_HIT_MAX_AGE_MS)
+        let p = self.pending.remove(&entity).filter(|p| ms - p.last.ms <= PENDING_HIT_MAX_AGE_MS)?;
+        let mut hit = p.marked.filter(|m| ms - m.ms <= PENDING_HIT_MAX_AGE_MS).unwrap_or(p.last);
+        hit.ambiguous |= p.last.ambiguous;
+        Some(hit)
     }
 
     fn push_closed(&mut self, w: Window, ms: i64) {
@@ -454,6 +490,24 @@ mod tests {
         assert_eq!(w.outcome, Some(Outcome::Break));
         assert_eq!(w.hits.iter().map(|h| h.value).sum::<u32>(), 150);
         assert_eq!(w.hits[1].value, 9);
+    }
+
+    #[test]
+    fn a_hit_with_entries_of_its_own_wins_over_a_proc_after_it() {
+        let mut log = StaggerLog::default();
+        log.note_spawn(1, 150, 104);
+        log.note_hit(1, 7, 12040140, 100, false);
+        log.note_hit(1, 7, 12130141, 200, false);
+        log.note_hit_entry(1, 7, 12130141);
+        log.note_hit_entry(1, 8, 12730001);
+        log.note_hit(1, 7, 12730001, 200, false);
+        log.note_gauge(1, 150, 94, 2, 210);
+        // With none marked, the last as before; a mark is spent with its update.
+        log.note_hit(1, 7, 12090243, 300, false);
+        log.note_hit_entry(1, 7, 12040140);
+        log.note_gauge(1, 150, 59, 2, 310);
+        let hits = &log.windows_between(0, 1000)[0].hits;
+        assert_eq!(hits.iter().map(|h| (h.skill, h.value)).collect::<Vec<_>>(), vec![(12130141, 10), (12090243, 35)]);
     }
 
     #[test]

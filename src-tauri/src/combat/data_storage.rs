@@ -903,22 +903,27 @@ impl DataStorage {
         self.stagger.lock().note_hit(target, actor, skill, now_ms(), dot);
     }
 
+    /// An entry of a hit with no value (`StaggerLog::note_hit_entry`).
+    pub fn note_stagger_hit_entry(&self, target: i32, actor: i32, skill: i32) {
+        self.stagger.lock().note_hit_entry(target, actor, skill);
+    }
+
     /// The gauge of `entity` as last known: (max, rest, last status).
     pub fn stagger_gauge(&self, entity: i32) -> Option<(u32, u32, Option<u8>)> {
         self.stagger.lock().gauge(entity)
     }
 
-    /// Stagger taken off the gauges of `entities` by each actor from
-    /// `start_ms` to `end_ms`, summons as themselves (the meter resolves
+    /// Stagger taken off the gauges of `entities` by each actor and skill
+    /// from `start_ms` to `end_ms`, summons as themselves (the meter resolves
     /// them as it does damage). Deductions with no actor are left out.
-    pub fn stagger_totals(&self, start_ms: i64, end_ms: i64, entities: &HashSet<i32>) -> HashMap<i32, i64> {
-        let mut out: HashMap<i32, i64> = HashMap::new();
+    pub fn stagger_totals(&self, start_ms: i64, end_ms: i64, entities: &HashSet<i32>) -> HashMap<(i32, i32), i64> {
+        let mut out: HashMap<(i32, i32), i64> = HashMap::new();
         for w in self.stagger.lock().windows_between(start_ms, end_ms) {
             if !entities.contains(&w.entity) {
                 continue;
             }
             for h in w.hits.iter().filter(|h| h.actor != 0 && h.ms >= start_ms && h.ms <= end_ms) {
-                *out.entry(h.actor).or_default() += h.value as i64;
+                *out.entry((h.actor, h.skill)).or_default() += h.value as i64;
             }
         }
         out
