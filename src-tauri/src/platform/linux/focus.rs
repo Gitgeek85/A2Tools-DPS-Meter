@@ -125,6 +125,13 @@ function follow(w) {
     if (done) done.connect(function () { remember(w); });
     place(w);
 }
+// A window of the meter going away (hidden: on KDE the meter unmaps the
+// windows it hides) leaves its place behind, so it comes back there.
+function gone(w) {
+    if (mine(w) && onScreen(w.frameGeometry)) remember(w);
+}
+if (workspace.windowRemoved) workspace.windowRemoved.connect(gone);
+else if (workspace.clientRemoved) workspace.clientRemoved.connect(gone);
 if (workspace.windowActivated) {
     workspace.windowActivated.connect(onActivated);
     report(workspace.activeWindow);
@@ -158,6 +165,10 @@ static PLACES: OnceLock<Places> = OnceLock::new();
 /// places only widgets then, where the meter left them (`load`).
 static X11_IN_WAYLAND: AtomicBool = AtomicBool::new(false);
 
+/// The script is running, so KWin puts each of the meter's windows back where
+/// it was each time it appears (`place` in the script).
+static PLACING: AtomicBool = AtomicBool::new(false);
+
 /// Keep the meter's windows where they were left, through KWin (#76). Only
 /// in a Wayland session: under X11 the meter places its own windows, as on
 /// Windows (in a Wayland session too, but for its widgets: X11_IN_WAYLAND).
@@ -173,6 +184,13 @@ pub fn keep_places(places: Places) {
 /// its widgets (see X11_IN_WAYLAND).
 pub fn places_own_windows() -> bool {
     X11_IN_WAYLAND.load(Ordering::Relaxed)
+}
+
+/// Whether KWin puts the meter's windows back where they were whenever they
+/// appear: on native Wayland in KDE, with the script running. A window can
+/// then be hidden for good and shown again at its place.
+pub fn kwin_places_windows() -> bool {
+    PLACING.load(Ordering::Relaxed) && PLACES.get().is_some() && !X11_IN_WAYLAND.load(Ordering::Relaxed)
 }
 
 /// 0: not known (no report yet, or not KDE). 1: the game or one of the
@@ -327,6 +345,7 @@ pub fn watch(on_change: impl Fn() + Send + Sync + 'static) -> Result<(), String>
     kwin.call_method("start", &()).map_err(|e| format!("starting the script: {e}"))?;
     let _ = ON_CHANGE.set(Box::new(on_change));
     let _ = CONNECTION.set(connection);
+    PLACING.store(true, Ordering::Relaxed);
     tracing::info!("KWin reports the active window (script {id})");
     Ok(())
 }
