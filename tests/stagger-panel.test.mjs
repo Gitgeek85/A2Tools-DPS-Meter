@@ -35,12 +35,11 @@ test("a window adds up by player and by skill, the unknown last", () => {
   assert.equal(Math.round(sum.actors[0].share * 100), 41);
 });
 
-test("how a window ended, also from a record saved before the reason was kept", () => {
+test("how a window ended", () => {
   const key = get("staggerEndKey");
   assert.equal(key(miniboss), "break");
   assert.equal(key({ result: "missed", ended: "death" }), "death");
   assert.equal(key({ result: "missed", ended: "fightEnd" }), "fightEnd");
-  assert.equal(key({ result: "missed" }), "reset");
   assert.equal(key({ result: "missed", ended: "nonsense" }), "reset");
 });
 

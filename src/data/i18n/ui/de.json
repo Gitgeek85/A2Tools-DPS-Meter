@@ -178,7 +178,7 @@
       "title": "Stagger",
       "unknownActor": "Unbekannt",
       "unknownSkill": "Unbekannter Skill",
-      "older": "Keine Stagger-Daten für diesen Kampf (mit einer älteren Version aufgezeichnet).",
+      "older": "Keine Stagger-Daten für diesen Kampf (von einer älteren Version aufgezeichnet).",
       "loading": "Lädt...",
       "none": "In diesem Kampf wurde keine Stagger-Leiste abgebaut.",
       "incomplete": "Der Startwert wurde nicht gesehen: früherer Stagger fehlt.",
@@ -187,7 +187,7 @@
       "value": "{n} Stagger",
       "ended": {
         "break": "Gebrochen nach {secs} s",
-        "reset": "Verpasst: {missing} von {max} fehlten",
+        "reset": "Verpasst: {missing} von {max} übrig",
         "death": "Vor dem Break besiegt: {missing} von {max} übrig",
         "despawn": "Vor dem Break verschwunden: {missing} von {max} übrig",
         "fightEnd": "Bei Kampfende noch offen: {missing} von {max} übrig"

@@ -399,15 +399,15 @@
       }
     },
 
-    // The live fight's buffs and debuffs on a target: { targetId, startTimeMs,
-    // durationMs, buffs }, or null.
+    // The live fight's buffs and debuffs on a target, and the stagger windows
+    // of every target Details shows with it: { targetId, startTimeMs,
+    // durationMs, buffs, stagger }, or null.
     async getFightBuffs(targetId) {
       try {
-        // Every target Details shows together: the stagger windows are those
-        // of their whole span (DpsCalculator::live_fight_buffs).
+        // The targets Details shows together, as getBattleDetail reads them.
         const dps = cachedDpsJson ? JSON.parse(cachedDpsJson) : null;
-        const targetIds = [...new Set((Array.isArray(dps?.detailTargetIds) ? dps.detailTargetIds : [])
-          .map(Number).filter((id) => id > 0))];
+        const targetIds = [...new Set((Array.isArray(dps?.detailTargetIds)
+          ? dps.detailTargetIds : [dps?.targetId]).map(Number).filter((id) => id > 0))];
         return await invoke("get_fight_buffs", { targetId: Number(targetId), targetIds });
       } catch (e) {
         console.error("[A2Tools] getFightBuffs error:", e);

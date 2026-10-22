@@ -8700,6 +8700,8 @@ html.a2-offline .historyUploadBtn {
   --stagger-break: #5fc48a;
   --stagger-missed: var(--error-fill, #e06b6b);
   --stagger-gone: #8fa3c0;
+  --stagger-warn: #f0c060;
+  --stagger-mark: #fff;
 }
 .detailsPanel .staggerBody {
   padding: 0 12px 6px;
@@ -8731,7 +8733,7 @@ html.a2-offline .historyUploadBtn {
   bottom: 0;
   width: 2px;
   margin-left: -1px;
-  background: #fff;
+  background: var(--stagger-mark);
   pointer-events: none;
 }
 .detailsPanel .staggerStatus {
@@ -8770,7 +8772,6 @@ html.a2-offline .historyUploadBtn {
   flex: 0 0 auto;
   font-size: 8px;
   color: var(--hud-faint, rgba(255, 255, 255, 0.3));
-  transition: none;
 }
 .detailsPanel .staggerActor.isOpen .staggerChevron {
   transform: rotate(90deg);
@@ -8778,13 +8779,13 @@ html.a2-offline .historyUploadBtn {
 .detailsPanel .staggerWarn {
   flex: 0 0 auto;
   font-size: 11px;
-  color: #f0c060;
+  color: var(--stagger-warn);
 }
 .detailsPanel .staggerSkill .buffLabel {
   padding-left: 16px;
 }
 .detailsPanel .staggerSkill .buffName {
-  color: var(--hud-sub, rgba(255, 255, 255, 0.7));
+  color: var(--hud-sub, rgba(255, 255, 255, 0.45));
 }
 .detailsPanel .staggerTick {
   position: absolute;
@@ -8796,5 +8797,5 @@ html.a2-offline .historyUploadBtn {
   background: var(--stagger-gone);
 }
 .detailsPanel .staggerTick.isAmbiguous {
-  outline: 1px solid #f0c060;
+  outline: 1px solid var(--stagger-warn);
 }

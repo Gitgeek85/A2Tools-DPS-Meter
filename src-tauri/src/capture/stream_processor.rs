@@ -383,16 +383,15 @@ impl StreamProcessor {
     /// <len> 05 E0 <entity varint> 00 03 02                                         broken
     /// ```
     ///
-    /// The gauge counts down: `rest` is what is left, and an update with
-    /// `rest` 0 never came, the break is its own record. `max` is its size
+    /// The gauge counts down: `rest` is what is left. No update ever has
+    /// `rest` 0: the break is its own record. `max` is its size
     /// (40 on Transcendent Bakarma in Story mode, solo; 150 on the two
     /// minibosses before it). Who took what off it is `combat::stagger`'s.
     ///
     /// Seen on 2026-10-22 (Global EU, Story mode, solo Templar): 45 records,
     /// all at the top level, none in a bundle (read there all the same,
-    /// since bundled packets come through here too). Over the 36 deductions
-    /// each came right after the hit that caused it, e.g. Punishment on
-    /// Bakarma (entity 54651, `fb aa 03`) taking 40 to 5:
+    /// since bundled packets come through here too). Punishment taking
+    /// Bakarma (entity 54651, `fb aa 03`) from 40 to 5:
     /// `14 05e0 fbaa03 0301 28000000 05000000 02`, and Annihilate breaking a
     /// miniboss (24627) at 9 left: `0c 05e0 b3c001 000302`.
     ///
@@ -400,7 +399,7 @@ impl StreamProcessor {
     /// usual), `03` once as Bakarma's gauge came on at its phase (`02` 150 ms
     /// later), `00` then `01` back at full after a wipe. Once after that reset
     /// came `03 01 3c000000 28000000 00` (max 60, rest 40), not understood.
-    /// It is stored and logged; it decides nothing but when a window opens.
+    /// It is logged; it decides nothing but when a window opens.
     fn parse_stagger_gauge_packet(&self, packet: &[u8]) {
         match stagger_gauge_record(packet) {
             Some(StaggerRecord::Gauge { entity, max, rest, status }) => {
@@ -1862,9 +1861,9 @@ impl StreamProcessor {
                 // nor healing. A Water Spirit's attack sends one of these to
                 // its Spiritmaster (16990002, 20 MP), filed under 100011.
             } else if actor_value != target_value {
-                // A hit with a value: the next update of the target's
-                // stagger gauge is this hit's (`combat::stagger`). The skill
-                // as the record has it, e.g. 12090243 for Punishment.
+                // A hit with a value joins the target's batch for its next
+                // stagger gauge update (`combat::stagger`). The skill as the
+                // record has it, e.g. 12090243 for Punishment.
                 if !npc_skill {
                     self.data_storage.note_stagger_hit(target_value, actor_value, exact_skill_code as i32, false);
                 }
@@ -1981,22 +1980,7 @@ impl StreamProcessor {
     // ===== HELPERS =====
 
     fn normalize_skill_id(&self, raw: i32) -> i32 {
-        if (30_000_000..=30_999_999).contains(&raw) {
-            return raw;
-        }
-        let base = raw - (raw % 10000);
-        let base_name = self.skill_lookup.get_skill_name(base);
-        if base_name.is_empty() {
-            return raw;
-        }
-        let raw_name = self.skill_lookup.get_skill_name(raw);
-        if raw_name.is_empty() {
-            return base;
-        }
-        if raw_name != base_name {
-            return raw;
-        }
-        base
+        normalize_skill_id(&self.skill_lookup, raw)
     }
 
     fn is_known_skill_code(&self, skill_code: i32) -> bool {
@@ -2023,6 +2007,27 @@ impl StreamProcessor {
 }
 
 // ===== FREE FUNCTIONS =====
+
+/// The skill code a hit record's code is shown under: its family's
+/// (12090243, Punishment, is 12090000) unless the table names it apart.
+pub fn normalize_skill_id(skill_lookup: &SkillLookup, raw: i32) -> i32 {
+    if (30_000_000..=30_999_999).contains(&raw) {
+        return raw;
+    }
+    let base = raw - (raw % 10000);
+    let base_name = skill_lookup.get_skill_name(base);
+    if base_name.is_empty() {
+        return raw;
+    }
+    let raw_name = skill_lookup.get_skill_name(raw);
+    if raw_name.is_empty() {
+        return base;
+    }
+    if raw_name != base_name {
+        return raw;
+    }
+    base
+}
 
 /// A stagger gauge record (`05 E0`, see
 /// `StreamProcessor::parse_stagger_gauge_packet`).
@@ -2083,6 +2088,8 @@ pub fn spawn_stagger_gauge(packet: &[u8]) -> Option<(u32, u32)> {
         return None;
     }
     let (max, rest) = (parse_u32_le(tail, 2), parse_u32_le(tail, 6));
+    // Generous bounds (the largest seen is 1200, Enhanced Harcon): only to
+    // turn away bytes that merely look like the ending.
     (rest > 0 && rest <= max && max <= 100_000).then_some((max, rest))
 }
 
@@ -3560,6 +3567,7 @@ fn scanned_name_fields(data: &[u8], out: &mut Vec<NameField>) {
 mod tests {
     use super::*;
     use crate::combat::data_storage::SkillCombatData;
+    use crate::combat::stagger::{End, Outcome, StaggerWindow};
 
     /// A roster with slots 1 and 5 filled and 2-4 vacant (bytes from a
     /// 2026-08-15 capture, rearranged). The walk used to stop at slot 2.
@@ -4600,18 +4608,30 @@ mod tests {
 
     /// Each frame its own `consume_stream`, 10 ms apart from `from_ms`.
     fn stream(p: &mut StreamProcessor, from_ms: i64, frames: &[&str]) {
+        stream_frames(p, from_ms, &frames.iter().map(|f| hex(f)).collect::<Vec<_>>());
+    }
+
+    fn stream_frames(p: &mut StreamProcessor, from_ms: i64, frames: &[Vec<u8>]) {
         for (i, f) in frames.iter().enumerate() {
             p.set_override_timestamp(Some(from_ms + 10 * i as i64));
-            assert_eq!(p.consume_stream(&hex(f)), f.len() / 2, "{f}");
+            assert_eq!(p.consume_stream(f), f.len(), "{f:02x?}");
         }
     }
 
+    /// `frame` with its actor (the player, `d8 29` at `at`) made 5352.
+    fn by_5352(frame: &str, at: usize) -> Vec<u8> {
+        let mut f = hex(frame);
+        assert_eq!(f[at], 0xd8);
+        f[at] = 0xe8;
+        f
+    }
+
     /// Every stagger window with a deduction, times as captured.
-    fn stagger(storage: &DataStorage) -> Vec<crate::combat::stagger::StaggerWindow> {
+    fn stagger(storage: &DataStorage) -> Vec<StaggerWindow> {
         storage.fight_stagger(0, i64::MAX)
     }
 
-    fn hits(w: &crate::combat::stagger::StaggerWindow) -> Vec<(i32, i32, u32)> {
+    fn hits(w: &StaggerWindow) -> Vec<(i32, i32, u32)> {
         w.hits.iter().map(|h| (h.actor, h.skill, h.value)).collect()
     }
 
@@ -4649,13 +4669,13 @@ mod tests {
         let w = &windows[0];
         assert_eq!((w.entity, w.max), (BAKARMA, 40));
         assert_eq!(hits(w), vec![(PLAYER, 12090243, 35)], "Vicious Strike took nothing");
-        assert_eq!(w.result, crate::combat::stagger::Outcome::Missed);
+        assert_eq!(w.result, Outcome::Missed);
         assert_eq!(w.missing, 5);
         assert!(!w.incomplete);
         assert_eq!(w.start, 10_000, "the window opened with the first record (status 03)");
         assert_eq!(w.end, 10_070, "the reset");
         assert_eq!(w.hits[0].t, 10_030, "when Punishment hit");
-        assert_eq!(storage.stagger_gauge(BAKARMA), Some((40, 40, Some(1))));
+        assert_eq!(storage.stagger_gauge(BAKARMA), Some((40, 40)));
     }
 
     /// The four groups on the first miniboss, each after the update before it
@@ -4707,9 +4727,9 @@ mod tests {
         let windows = stagger(&storage);
         assert_eq!(windows.len(), 1);
         assert_eq!(hits(&windows[0]), vec![(PLAYER, 12300340, 9)]);
-        assert_eq!(windows[0].result, crate::combat::stagger::Outcome::Break);
+        assert_eq!(windows[0].result, Outcome::Break);
         assert_eq!(windows[0].missing, 0);
-        assert_eq!(storage.stagger_gauge(MINIBOSS), Some((150, 150, Some(2))));
+        assert_eq!(storage.stagger_gauge(MINIBOSS), Some((150, 150)));
         assert!(storage.stagger_open_window(MINIBOSS).is_none(), "refilled, no window yet");
     }
 
@@ -4717,8 +4737,8 @@ mod tests {
     fn a_bosss_spawn_carries_its_gauge_in_its_last_15_bytes() {
         let (storage, mut p) = processor();
         stream(&mut p, 0, &[BAKARMA_SPAWN, MINIBOSS_SPAWN]);
-        assert_eq!(storage.stagger_gauge(BAKARMA), Some((40, 40, None)));
-        assert_eq!(storage.stagger_gauge(MINIBOSS), Some((150, 150, None)));
+        assert_eq!(storage.stagger_gauge(BAKARMA), Some((40, 40)));
+        assert_eq!(storage.stagger_gauge(MINIBOSS), Some((150, 150)));
         assert!(storage.stagger_open_window(BAKARMA).is_none(), "a spawn opens no window");
 
         // The same spawn without that ending has no gauge.
@@ -4768,16 +4788,14 @@ mod tests {
     fn a_dot_tick_does_not_take_a_hits_deduction_but_takes_one_with_none() {
         let (storage, mut p) = processor();
         p.set_dot_skill_ids(HashSet::from([12_090_000]));
-        let mut other = hex(PUNISHMENT_TICK);
-        other[7] = 0xe8; // actor 5352
-        let other: String = other.iter().map(|b| format!("{b:02x}")).collect();
+        let other = by_5352(PUNISHMENT_TICK, 7);
         stream(&mut p, 0, &[BAKARMA_SPAWN, "1405e0fbaa030301280000002800000002"]);
-        stream(&mut p, 100, &[
-            "250438fbaa030600d829837bb800090200000147e90f48020000009e55d487020200",
-            &other,
-            "1405e0fbaa030301280000000500000002",
+        stream_frames(&mut p, 100, &[
+            hex("250438fbaa030600d829837bb800090200000147e90f48020000009e55d487020200"),
+            other.clone(),
+            hex("1405e0fbaa030301280000000500000002"),
         ]);
-        stream(&mut p, 200, &[&other, "1405e0fbaa030301280000000400000002"]);
+        stream_frames(&mut p, 200, &[other, hex("1405e0fbaa030301280000000400000002")]);
         let windows = stagger(&storage);
         assert_eq!(hits(&windows[0]), vec![(PLAYER, 12090243, 35), (5352, 12090000, 1)]);
         assert!(windows[0].hits.iter().all(|h| !h.ambiguous));
@@ -4786,11 +4804,12 @@ mod tests {
     #[test]
     fn another_actors_hit_since_the_last_update_makes_it_ambiguous() {
         let (storage, mut p) = processor();
-        let mut other = hex(SHIELD_SMITE[0]);
-        other[8] = 0xe8; // actor 5352, after `27 04 38 b3 c0 01 26 00 d8`
-        let other: String = other.iter().map(|b| format!("{b:02x}")).collect();
         stream(&mut p, 0, &[MINIBOSS_SPAWN]);
-        stream(&mut p, 100, &[&other, SHIELD_SMITE[0], "1405e0b3c0010301960000008c00000002"]);
+        stream_frames(&mut p, 100, &[
+            by_5352(SHIELD_SMITE[0], 8),
+            hex(SHIELD_SMITE[0]),
+            hex("1405e0b3c0010301960000008c00000002"),
+        ]);
         let windows = stagger(&storage);
         assert_eq!(hits(&windows[0]), vec![(PLAYER, 12100340, 10)]);
         assert!(windows[0].hits[0].ambiguous);
@@ -4800,11 +4819,8 @@ mod tests {
     fn a_summons_stagger_is_its_owners() {
         let (storage, mut p) = processor();
         storage.register_confirmed_summon_by_id(5352, PLAYER);
-        let mut summon = hex(SHIELD_SMITE[0]);
-        summon[8] = 0xe8;
-        let summon: String = summon.iter().map(|b| format!("{b:02x}")).collect();
         stream(&mut p, 0, &[MINIBOSS_SPAWN]);
-        stream(&mut p, 100, &[&summon, "1405e0b3c0010301960000008c00000002"]);
+        stream_frames(&mut p, 100, &[by_5352(SHIELD_SMITE[0], 8), hex("1405e0b3c0010301960000008c00000002")]);
         assert_eq!(hits(&stagger(&storage)[0]), vec![(PLAYER, 12100340, 10)]);
     }
 
@@ -4815,10 +4831,10 @@ mod tests {
         assert_eq!(hits(&stagger(&storage)[0]), vec![(0, 0, 10)]);
     }
 
-    /// Shaman Kumbahum (entity 51518, `be 92 03`), 2026-10-22 19:40:21: in
-    /// one bundle Poach (player 12205, `ad 5f`) with three entries of its own
-    /// and no value, then a Punishing Benediction proc, then the gauge 104 to
-    /// 94. The 10 are Poach's: the proc has no entries of its own.
+    /// Shaman Kumbahum (entity 51518, `be 92 03`), 2026-10-22: in one bundle
+    /// Poach (player 12205, `ad 5f`) with three entries of its own and no
+    /// value, then a Punishing Benediction proc, then the gauge 104 to 94.
+    /// The 10 are Poach's: the proc has no entries of its own.
     #[test]
     fn a_proc_between_the_hit_and_the_update_does_not_take_its_stagger() {
         let (storage, mut p) = processor();
@@ -4834,11 +4850,11 @@ mod tests {
         assert_eq!(hits(&stagger(&storage)[0]), vec![(12205, 12130141, 10)]);
     }
 
-    /// Enhanced Harcon (entity 65183, `9f fd 03`), 2026-10-22 19:50:25.961, a
-    /// party of five: a Punishing Benediction proc, Judgment (Templar 9348,
-    /// `84 49`) with an entry of its own, a Chanter's hit (10868, `f4 54`)
-    /// with one, then the gauge 947 to 942 and 940. In turn: Judgment 5, as
-    /// solo, and the Chanter 2.
+    /// Enhanced Harcon (entity 65183, `9f fd 03`), 2026-10-22, a party of
+    /// five: a Punishing Benediction proc, Judgment (Templar 9348, `84 49`)
+    /// with an entry of its own, a Chanter's hit (10868, `f4 54`) with one,
+    /// then the gauge 947 to 942 and 940. In turn: Judgment 5, as solo, and
+    /// the Chanter 2.
     #[test]
     fn a_partys_hits_take_the_updates_after_them_in_turn() {
         let (storage, mut p) = processor();
@@ -4880,8 +4896,8 @@ mod tests {
         p.set_override_timestamp(Some(5_000));
         storage.mark_entity_dead(MINIBOSS);
         let w = &stagger(&storage)[0];
-        assert_eq!((w.result, w.missing, w.end), (crate::combat::stagger::Outcome::Missed, 140, 5_000));
-        assert_eq!(w.ended, Some(crate::combat::stagger::End::Death));
+        assert_eq!((w.result, w.missing, w.end), (Outcome::Missed, 140, 5_000));
+        assert_eq!(w.ended, End::Death);
         assert_eq!(storage.stagger_gauge(MINIBOSS), None);
     }
 }

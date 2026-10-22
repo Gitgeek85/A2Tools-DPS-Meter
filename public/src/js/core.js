@@ -998,20 +998,15 @@ class DpsApp {
 
   /** A row's stagger by skill, most first, as the hover tooltip lists skills. */
   staggerTooltipDetails(row) {
-    const name = (code) => {
-      // The record's code (12090243) names nothing; its family does (12090000).
-      for (const k of [code, code - (code % 10000), code - (code % 1000), code - (code % 100)]) {
-        const n = this.i18n?.getSkillName?.(k, "");
-        if (n) return n;
-      }
-      return code ? `#${code}` : this.i18n?.t?.("details.stagger.unknownSkill", "Unknown skill") ?? "Unknown skill";
-    };
+    // The codes are the ones skills are shown by (normalize_skill_id).
+    const name = (code) => this.i18n?.getSkillName?.(code, "")
+      || (code ? `#${code}` : this.i18n?.t?.("details.stagger.unknownSkill", "Unknown skill") ?? "Unknown skill");
     const skills = Object.entries(row?.staggerSkills || {})
       .map(([code, value]) => ({ code: Number(code), value: Number(value) || 0 }))
       .filter((s) => s.value > 0)
       .sort((a, b) => b.value - a.value || a.code - b.code)
       .slice(0, 5)
-      .map((s) => ({ name: name(s.code), code: s.code - (s.code % 10000), dmg: s.value, job: row?.job }));
+      .map((s) => ({ name: name(s.code), code: s.code, dmg: s.value, job: row?.job }));
     return { skills, state: "empty", mode: "stagger" };
   }
 

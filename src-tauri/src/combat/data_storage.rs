@@ -5,7 +5,7 @@ use std::sync::Arc;
 use parking_lot::{Mutex, RwLock};
 
 use crate::capture::abnormal;
-use crate::combat::stagger::{StaggerHit, StaggerLog, StaggerWindow};
+use crate::combat::stagger::{End, Outcome, StaggerHit, StaggerLog, StaggerWindow};
 
 use crate::entity::damage_packet::ParsedDamagePacket;
 use crate::entity::job_class::JobClass;
@@ -908,8 +908,9 @@ impl DataStorage {
         self.stagger.lock().note_hit_entry(target, actor, skill);
     }
 
-    /// The gauge of `entity` as last known: (max, rest, last status).
-    pub fn stagger_gauge(&self, entity: i32) -> Option<(u32, u32, Option<u8>)> {
+    /// The gauge of `entity` as last known: (max, rest).
+    #[cfg(test)]
+    pub fn stagger_gauge(&self, entity: i32) -> Option<(u32, u32)> {
         self.stagger.lock().gauge(entity)
     }
 
@@ -929,6 +930,7 @@ impl DataStorage {
         out
     }
 
+    /// The stagger window open on `entity`, if any.
     #[cfg(test)]
     pub fn stagger_open_window(&self, entity: i32) -> Option<crate::combat::stagger::Window> {
         self.stagger.lock().open_window(entity).cloned()
@@ -948,8 +950,8 @@ impl DataStorage {
                 max: w.max,
                 start: w.start_ms - start_ms,
                 end: w.end_ms.unwrap_or(end_ms) - start_ms,
-                result: w.outcome.unwrap_or(crate::combat::stagger::Outcome::Missed),
-                ended: w.ended,
+                result: w.outcome().unwrap_or(Outcome::Missed),
+                ended: w.ended.unwrap_or(End::FightEnd),
                 missing: w.missing,
                 incomplete: w.incomplete,
                 hits: w

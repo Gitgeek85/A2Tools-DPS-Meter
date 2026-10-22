@@ -27,7 +27,7 @@
 //!   (Enhanced Harcon, the same evening, five players). Over that dungeon's
 //!   789 deductions each skill then took one value every time (Punishment
 //!   35, Pummel 3, as solo), but for the last of a break, which takes what is
-//!   left; taking the batch's last hit instead, 18% of them went astray;
+//!   left;
 //! - with no marked hit left, the batch's last hit not yet taken does, and
 //!   when the batch has hits of more than one actor that is `ambiguous`;
 //! - a DoT tick (`05 38`) counts only when the batch has no hit: `05 38` is
@@ -39,24 +39,25 @@
 //! The next hit after an update starts a new batch: a marked hit that took
 //! nothing (the gauge locked, before a mechanic boss's phase) is dropped.
 //!
-//! The status byte is kept and logged but decides nothing beyond when a
-//! window opens: its meaning is read from three monsters only. See
-//! `note_gauge`.
+//! The status byte is logged but decides nothing beyond when a window
+//! opens: its meaning is read from three monsters only. See `note_gauge`.
 
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-/// A remembered hit older than this when the gauge moves belongs to a fight
-/// that has ended: the meter's own idle gap between two fights.
+/// A batch whose last hit is older than this when the gauge moves belongs to
+/// a fight that has ended: the meter's own idle gap between two fights.
 const PENDING_HIT_MAX_AGE_MS: i64 = 30_000;
+/// At most this many hits are kept per batch (a party's batch has a dozen).
+const MAX_BATCH_HITS: usize = 64;
 /// How long a closed window is kept: long enough for any fight to be saved
 /// again, short enough that a meter left running all day holds little.
 const WINDOW_RETENTION_MS: i64 = 30 * 60 * 1000;
 
 /// What a window ended with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "camelCase")]
 pub enum Outcome {
     /// The gauge broke (`05 E0 <entity> 00 03 02`).
     Break,
@@ -85,7 +86,7 @@ pub enum End {
 pub struct Hit {
     pub ms: i64,
     /// The entity that hit, as the record names it (a summon is resolved to
-    /// its owner when the fight is saved); 0 when no hit was remembered.
+    /// its owner when the fight is saved); 0 when the batch had none.
     pub actor: i32,
     /// The skill id as the hit record carries it (12090243 for Punishment),
     /// 0 with no hit.
@@ -102,7 +103,7 @@ pub struct Window {
     pub start_ms: i64,
     /// `None` while open.
     pub end_ms: Option<i64>,
-    pub outcome: Option<Outcome>,
+    /// Why it ended; `None` while open.
     pub ended: Option<End>,
     /// What was left of the gauge when it was missed; 0 on a break.
     pub missing: u32,
@@ -116,8 +117,13 @@ pub struct Window {
 }
 
 impl Window {
+    /// Broken or missed; `None` while open.
+    pub fn outcome(&self) -> Option<Outcome> {
+        self.ended.map(|e| if e == End::Break { Outcome::Break } else { Outcome::Missed })
+    }
+
     /// The gauge's value at `ms`, as last known.
-    pub fn rest_at(&self, ms: i64) -> u32 {
+    fn rest_at(&self, ms: i64) -> u32 {
         self.rests.iter().take_while(|r| r.0 <= ms).last().or(self.rests.first()).map_or(self.max, |r| r.1)
     }
 }
@@ -126,8 +132,6 @@ impl Window {
 struct Gauge {
     max: u32,
     rest: u32,
-    /// The last status byte (`None` from a spawn). Logged, decides nothing.
-    status: Option<u8>,
     /// Broken and not yet refilled.
     broken: bool,
     /// The gauge's value has been seen in full (its spawn, or an update at
@@ -154,9 +158,6 @@ struct BatchHit {
     /// A deduction has gone to it.
     taken: bool,
 }
-
-/// At most this many hits are kept per batch (a party's batch has a dozen).
-const MAX_BATCH_HITS: usize = 64;
 
 /// The hits on an entity since its gauge last moved (see the module's notes).
 #[derive(Debug, Clone, Default)]
@@ -203,7 +204,7 @@ impl StaggerLog {
                 g.baseline = true;
             }
             None => {
-                self.gauges.insert(entity, Gauge { max, rest, status: None, broken: false, baseline: true, open: None });
+                self.gauges.insert(entity, Gauge { max, rest, broken: false, baseline: true, open: None });
             }
         }
     }
@@ -244,7 +245,7 @@ impl StaggerLog {
     ///
     /// | update                            | meaning                              |
     /// |-----------------------------------|--------------------------------------|
-    /// | `rest` falls, `max` unchanged     | a deduction, to the remembered hit   |
+    /// | `rest` falls, `max` unchanged     | a deduction, to the batch's next hit |
     /// | `rest` back to `max` after break  | refilled: no stagger, no window yet  |
     /// | `rest` back to `max`, no break    | reset: the open window is missed     |
     /// | `max` changes (60/40 after a wipe)| a new starting value, no deduction   |
@@ -257,14 +258,13 @@ impl StaggerLog {
         let Some(g) = self.gauges.get_mut(&entity) else {
             // No spawn seen: this sets the starting value. Below full, what
             // was taken before it is lost.
-            let mut g = Gauge { max, rest, status: Some(status), broken: false, baseline: rest >= max, open: None };
+            let mut g = Gauge { max, rest, broken: false, baseline: rest >= max, open: None };
             if active || rest < max {
                 g.open = Some(open_window(entity, max, rest, ms, rest < max));
             }
             self.gauges.insert(entity, g);
             return;
         };
-        g.status = Some(status);
         if max != g.max {
             g.max = max;
             g.rest = rest;
@@ -308,8 +308,8 @@ impl StaggerLog {
         }
     }
 
-    /// The gauge broke, `05 E0 <entity> 00 03 02`: the remembered hit took
-    /// what was left.
+    /// The gauge broke, `05 E0 <entity> 00 03 02`: the batch's next hit
+    /// (`Pending::take`) took what was left.
     pub fn note_break(&mut self, entity: i32, ms: i64) {
         let hit = take_hit(&mut self.pending, entity, ms);
         let Some(g) = self.gauges.get_mut(&entity) else {
@@ -339,7 +339,7 @@ impl StaggerLog {
         }
     }
 
-    /// The fight ended: no remembered hit carries over into the next.
+    /// The fight ended: no batch carries over into the next.
     pub fn forget_pending(&mut self) {
         self.pending.clear();
     }
@@ -349,9 +349,10 @@ impl StaggerLog {
         *self = Self::default();
     }
 
-    /// The gauge's (max, rest, last status), if known.
-    pub fn gauge(&self, entity: i32) -> Option<(u32, u32, Option<u8>)> {
-        self.gauges.get(&entity).map(|g| (g.max, g.rest, g.status))
+    /// The gauge's (max, rest), if known.
+    #[cfg(test)]
+    pub fn gauge(&self, entity: i32) -> Option<(u32, u32)> {
+        self.gauges.get(&entity).map(|g| (g.max, g.rest))
     }
 
     /// The window open on `entity`, if any.
@@ -408,7 +409,6 @@ fn open_window(entity: i32, max: u32, rest: u32, ms: i64, incomplete: bool) -> W
         max,
         start_ms: ms,
         end_ms: None,
-        outcome: None,
         ended: None,
         missing: 0,
         incomplete,
@@ -418,11 +418,9 @@ fn open_window(entity: i32, max: u32, rest: u32, ms: i64, incomplete: bool) -> W
 }
 
 fn close(w: &mut Window, ms: i64, ended: End, left: u32) {
-    let outcome = if ended == End::Break { Outcome::Break } else { Outcome::Missed };
     w.end_ms = Some(ms);
-    w.outcome = Some(outcome);
     w.ended = Some(ended);
-    w.missing = if outcome == Outcome::Missed { left } else { 0 };
+    w.missing = if ended == End::Break { 0 } else { left };
 }
 
 fn hit_of(hit: Option<PendingHit>, ms: i64, value: u32) -> Hit {
@@ -430,10 +428,6 @@ fn hit_of(hit: Option<PendingHit>, ms: i64, value: u32) -> Hit {
         Some(p) => Hit { ms: p.ms, actor: p.actor, skill: p.skill, value, ambiguous: p.ambiguous },
         None => Hit { ms, actor: 0, skill: 0, value, ambiguous: false },
     }
-}
-
-fn is_false(b: &bool) -> bool {
-    !*b
 }
 
 /// A window as a fight in History keeps it (`FightRecord::stagger`). Times
@@ -449,16 +443,15 @@ pub struct StaggerWindow {
     pub start: i64,
     pub end: i64,
     pub result: Outcome,
-    /// Why it ended: a missed window was reset, its entity died or left, or
-    /// the fight ended first. Absent in a window saved before it was kept.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ended: Option<End>,
+    /// Why it ended: broken, or missed as its gauge was reset, its entity
+    /// died or left, or the fight ended first.
+    pub ended: End,
     /// What was left of the gauge when it was missed; 0 on a break.
     #[serde(default)]
     pub missing: u32,
     /// The gauge's starting value was not seen: a deduction before the
     /// first update is not in `hits`.
-    #[serde(default, skip_serializing_if = "is_false")]
+    #[serde(default, skip_serializing_if = "crate::combat::fight_buffs::is_false")]
     pub incomplete: bool,
     pub hits: Vec<StaggerHit>,
 }
@@ -473,8 +466,9 @@ pub struct StaggerHit {
     /// The skill id as the hit record carries it; 0 when not known.
     pub skill: i32,
     pub value: u32,
-    /// Another actor also hit this entity since the gauge's last update.
-    #[serde(default, skip_serializing_if = "is_false")]
+    /// No hit of the batch was marked as taking stagger, so the batch's last
+    /// went first, and the batch had hits of more than one actor.
+    #[serde(default, skip_serializing_if = "crate::combat::fight_buffs::is_false")]
     pub ambiguous: bool,
 }
 
@@ -483,7 +477,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deductions_go_to_the_hit_before_them_and_a_reset_misses_the_window() {
+    fn a_deduction_goes_to_the_batchs_hit_and_a_reset_misses_the_window() {
         let mut log = StaggerLog::default();
         log.note_spawn(1, 40, 40);
         log.note_gauge(1, 40, 40, 3, 100);
@@ -493,7 +487,7 @@ mod tests {
         log.note_gauge(1, 40, 5, 2, 310);
         log.note_gauge(1, 40, 40, 0, 900);
         let w = &log.windows_between(0, 1000)[0];
-        assert_eq!((w.outcome, w.ended), (Some(Outcome::Missed), Some(End::Reset)));
+        assert_eq!((w.outcome(), w.ended), (Some(Outcome::Missed), Some(End::Reset)));
         assert_eq!(w.missing, 5);
         assert_eq!(w.start_ms, 100);
         assert_eq!(w.end_ms, Some(900));
@@ -509,7 +503,7 @@ mod tests {
         // Saved while open, then after the reset that came after the fight.
         for _ in 0..2 {
             let w = &log.windows_between(0, 500)[0];
-            assert_eq!((w.outcome, w.ended, w.missing, w.end_ms), (Some(Outcome::Missed), Some(End::FightEnd), 5, Some(500)));
+            assert_eq!((w.outcome(), w.ended, w.missing, w.end_ms), (Some(Outcome::Missed), Some(End::FightEnd), 5, Some(500)));
             log.note_gauge(1, 40, 40, 0, 5_000);
         }
         assert!(log.open_window(1).is_none());
@@ -526,7 +520,7 @@ mod tests {
         log.note_gauge(1, 150, 150, 2, 300);
         assert!(log.open_window(1).is_none(), "a refill opens no window");
         let w = &log.windows_between(0, 1000)[0];
-        assert_eq!(w.outcome, Some(Outcome::Break));
+        assert_eq!(w.outcome(), Some(Outcome::Break));
         assert_eq!(w.hits.iter().map(|h| h.value).sum::<u32>(), 150);
         assert_eq!(w.hits[1].value, 9);
     }
@@ -541,7 +535,7 @@ mod tests {
         log.note_hit_entry(1, 8, 12730001);
         log.note_hit(1, 7, 12730001, 200, false);
         log.note_gauge(1, 150, 94, 2, 210);
-        // With none marked, the last as before; a mark is spent with its update.
+        // With none marked, the last one; a mark is spent with its update.
         log.note_hit(1, 7, 12090243, 300, false);
         log.note_hit_entry(1, 7, 12040140);
         log.note_gauge(1, 150, 59, 2, 310);
@@ -634,7 +628,7 @@ mod tests {
         log.note_gone(1, 500, true);
         assert!(log.gauge(1).is_none());
         let w = &log.windows_between(0, 1000)[0];
-        assert_eq!((w.outcome, w.ended, w.missing, w.end_ms), (Some(Outcome::Missed), Some(End::Death), 30, Some(500)));
+        assert_eq!((w.outcome(), w.ended, w.missing, w.end_ms), (Some(Outcome::Missed), Some(End::Death), 30, Some(500)));
     }
 
     #[test]
@@ -642,7 +636,7 @@ mod tests {
         let mut log = StaggerLog::default();
         log.note_spawn(1, 40, 40);
         log.note_gauge(1, 60, 40, 0, 100);
-        assert_eq!(log.gauge(1), Some((60, 40, Some(0))));
+        assert_eq!(log.gauge(1), Some((60, 40)));
         assert!(log.open_window(1).is_none());
         log.note_hit(1, 7, 1, 200, false);
         log.note_gauge(1, 60, 30, 2, 210);

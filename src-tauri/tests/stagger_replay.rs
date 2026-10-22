@@ -13,11 +13,10 @@
 //! broken window is not compared).
 //!
 //! `A2_STAGGER_SOLO_CAPTURE` (asserts): the solo capture of 2026-10-22
-//! (Global EU, Story mode, Templar entity 5336; times +02:00): two
-//! minibosses (150 each, both broken) from 17:31, then Transcendent Bakarma
-//! (2310471, entity 54651, pulled 17:35:58.776), wiped at 0:56.5 with its
-//! gauge at 5 of 40 after Punishment took 35. The capture holds character
-//! names and is not in the repository.
+//! (Global EU, Story mode, Templar entity 5336): two minibosses (150 each,
+//! both broken), then Transcendent Bakarma (2310471, entity 54651), wiped at
+//! 0:56.5 with its gauge at 5 of 40 after Punishment took 35. The capture
+//! holds character names and is not in the repository.
 //!
 //! ```text
 //! A2_REPLAY_STAGGER="<capture>;<capture>..."  packets_*.txt captures
@@ -322,7 +321,7 @@ fn the_solo_capture_of_2026_10_22() {
     let w = on_boss[0];
     assert_eq!((w.result, w.missing, w.max), (Outcome::Missed, 5, 40), "{w:?}");
     // The reset came 5 s after the fight's last hit: the fight saw it open.
-    assert_eq!(w.ended, Some(End::FightEnd), "{w:?}");
+    assert_eq!(w.ended, End::FightEnd, "{w:?}");
     assert!(w.hits.iter().any(|h| h.skill == 12090243 && h.value == 35 && h.actor == 5336), "{w:?}");
     assert!(!w.incomplete);
 
@@ -334,7 +333,7 @@ fn the_solo_capture_of_2026_10_22() {
         assert!(!w.incomplete, "{w:?}");
     }
     // A miniboss broken once and killed during its next window.
-    assert!(r.windows.iter().any(|w| w.ended == Some(End::Death) && w.entity != 54651));
+    assert!(r.windows.iter().any(|w| w.ended == End::Death && w.entity != 54651));
     // The meter's Stagger mode: Punishment's 35 on Bakarma, and each
     // miniboss's broken gauge and more.
     assert_eq!(r.meter_stagger.get(&(54651, 5336)), Some(&35));

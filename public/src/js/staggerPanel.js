@@ -14,12 +14,10 @@ const STAGGER_END_FALLBACK = {
   fightEnd: "Still open when the fight ended: {missing} of {max} left",
 };
 
-// A window's ending: "break", "reset", "death", "despawn" or "fightEnd". A
-// window saved before the reason was kept says only break or missed.
+// A window's ending: "break", "reset", "death", "despawn" or "fightEnd".
 const staggerEndKey = (w) => {
-  if (w?.result === "break") return "break";
   const ended = String(w?.ended || "");
-  return Object.hasOwn(STAGGER_END_FALLBACK, ended) && ended !== "break" ? ended : "reset";
+  return Object.hasOwn(STAGGER_END_FALLBACK, ended) ? ended : "reset";
 };
 
 // A window seen whole: who took how much, by skill, with the hit times.
@@ -125,15 +123,18 @@ const createStaggerPanel = ({ root, describeActor = () => null }) => {
   };
 
   // A skill code as the hit record has it (12090243, Punishment) names
-  // nothing in the table: its family does (12090000).
+  // nothing in the table: its family does (12090000). The code the table
+  // names, else the family's.
+  const skillFamily = (code) => {
+    const c = Number(code) || 0;
+    const family = [c, c - (c % 10000), c - (c % 1000), c - (c % 100)];
+    return family.find((k) => i18n?.getSkillName?.(k, "")) ?? family[1];
+  };
+
   const skillName = (code) => {
     const c = Number(code) || 0;
     if (!c) return t("details.stagger.unknownSkill", "Unknown skill");
-    for (const k of [c, c - (c % 10000), c - (c % 1000), c - (c % 100)]) {
-      const n = i18n?.getSkillName?.(k, "");
-      if (n) return n;
-    }
-    return `#${c}`;
+    return i18n?.getSkillName?.(skillFamily(c), "") || `#${c}`;
   };
 
   const skillIcon = (code, job) => {
@@ -145,7 +146,7 @@ const createStaggerPanel = ({ root, describeActor = () => null }) => {
     const c = Number(code) || 0;
     if (c && window.skillIcons?.applyIconToImage) {
       img.addEventListener("error", () => window.skillIcons?.handleImgError?.(img));
-      window.skillIcons.applyIconToImage(img, { code: c - (c % 10000), job });
+      window.skillIcons.applyIconToImage(img, { code: skillFamily(c), job });
       return img;
     }
     const dot = document.createElement("span");

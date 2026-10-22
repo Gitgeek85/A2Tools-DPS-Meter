@@ -2696,16 +2696,18 @@ const createDetailsUI = ({
   // ── Buffs ──
   // A History fight's come with its record; a live fight's are asked for
   // once per refresh at most. They sit in the fight timeline, on its axis.
+  // A fight's actor as the buff and stagger sections name and colour it.
+  const describeActor = (id) => {
+    const actor = detailsActors.get(Number(id));
+    if (!actor) return null;
+    const job = actor.job || getActorJob(id);
+    const name = actor.nickname && actor.nickname !== String(id) ? actor.nickname : `#${id}`;
+    return { name, job, color: getJobColor(job) };
+  };
   const buffTimeline = typeof window.createBuffTimeline === "function"
     ? window.createBuffTimeline({
       root: fightTimeline,
-      describeActor: (id) => {
-        const actor = detailsActors.get(Number(id));
-        if (!actor) return null;
-        const job = actor.job || getActorJob(id);
-        const name = actor.nickname && actor.nickname !== String(id) ? actor.nickname : `#${id}`;
-        return { name, job, color: getJobColor(job) };
-      },
+      describeActor,
     })
     : null;
   let liveBuffs = null;
@@ -2717,13 +2719,7 @@ const createDetailsUI = ({
   const staggerPanel = typeof window.createStaggerPanel === "function"
     ? window.createStaggerPanel({
       root: fightTimeline,
-      describeActor: (id) => {
-        const actor = detailsActors.get(Number(id));
-        if (!actor) return null;
-        const job = actor.job || getActorJob(id);
-        const name = actor.nickname && actor.nickname !== String(id) ? actor.nickname : `#${id}`;
-        return { name, job, color: getJobColor(job) };
-      },
+      describeActor,
     })
     : null;
 

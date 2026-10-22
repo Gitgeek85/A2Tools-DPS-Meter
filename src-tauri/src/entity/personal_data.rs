@@ -46,8 +46,9 @@ pub struct PersonalData {
     /// (`combat::stagger`), for the meter's Stagger mode.
     #[serde(default)]
     pub stagger: i64,
-    /// That stagger by skill (the code as the hit record has it), for the
-    /// row's tooltip in Stagger mode. Left out when there is none.
+    /// That stagger by skill, under the codes skills are shown by
+    /// (`normalize_skill_id`), for the row's tooltip in Stagger mode. Left
+    /// out when there is none.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub stagger_skills: HashMap<i32, i64>,
 }

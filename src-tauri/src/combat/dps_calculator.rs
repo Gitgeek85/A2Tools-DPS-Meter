@@ -388,7 +388,8 @@ impl DpsCalculator {
             let uid = *canonical.get(&nickname).unwrap_or(&raw_uid);
             if let Some(entry) = dps_data.map.get_mut(&uid) {
                 entry.stagger += stagger;
-                *entry.stagger_skills.entry(skill).or_default() += stagger;
+                let shown = crate::capture::stream_processor::normalize_skill_id(&self.skill_lookup, skill);
+                *entry.stagger_skills.entry(shown).or_default() += stagger;
             }
         }
 
