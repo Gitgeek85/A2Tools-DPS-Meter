@@ -285,6 +285,7 @@
     },
     "partyPresence": "Mostrar usuarios de A2Tools en mi grupo",
     "shareBossTimers": "Compartir temporizadores de jefes de campo",
+    "shareSupplyRequests": "Compartir solicitudes de suministros",
     "debugLogging": "Registro de depuración",
     "quit": "Salir",
     "discord": {
@@ -539,6 +540,7 @@
       "updateRate": "Cada cuánto se actualizan los números del medidor. Más rápido muestra los golpes antes pero usa más CPU.",
       "partyPresence": "Los miembros del grupo que también usan A2Tools ven una pequeña etiqueta A2 junto a tu nombre, y tú ves la suya. Cualquiera del grupo que use A2Tools puede verla, así que sabrá que usas un medidor de terceros. Solo se envían hashes de nombres de personaje y servidores.",
       "shareBossTimers": "Comparte los temporizadores de jefes de campo con otros jugadores a través de a2tools.app (y su socio Aion 2 Timers): los jefes de tu mapa al abrirlo y los jefes de campo que ves morir, y sus PV mientras luchas contra ellos. Solo se envían el servidor, los jefes, sus horas y PV.",
+      "shareSupplyRequests": "Comparte los tablones de solicitudes de suministros de tu servidor con el Profiteer de a2tools.app cuando cambian (tras cada reinicio): el servidor, los tablones y sus solicitudes. No se envía nada de tu personaje ni de su progreso.",
       "debugLogging": "Escribe un registro de diagnóstico que el desarrollador puede usar para encontrar problemas.",
       "saveRawPackets": "Graba el tráfico bruto del juego para informes de errores. El registro de depuración se activa con él.",
       "globalHotkeys": "Las teclas de abajo funcionan en cualquier momento, incluso con el juego en primer plano. Desactivado, quedan libres para otros programas. En Linux las registra el escritorio, que puede pedirte que las apruebes.",

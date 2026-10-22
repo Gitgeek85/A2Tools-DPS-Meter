@@ -213,7 +213,7 @@ pub fn hp_request(server_id: u16, bosses: &[BossHp]) -> Option<serde_json::Value
 /// Learnt only from the game's own word (`own_server`), never from a guess.
 /// What it finds also goes to the fight records (`note_host_server`), so a
 /// fight then is saved, and its log filed, under that server too.
-fn report_server(state: &AppState) -> u16 {
+pub(crate) fn report_server(state: &AppState) -> u16 {
     let own = state.data_storage.own_server();
     // Only a real game server's address names a server. Through a ping
     // reducer (ExitLag and the like) the game talks to a tunnel on this PC

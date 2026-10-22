@@ -285,6 +285,7 @@
     },
     "partyPresence": "Afficher les utilisateurs d'A2Tools de mon groupe",
     "shareBossTimers": "Partager les minuteurs des boss de terrain",
+    "shareSupplyRequests": "Partager les demandes de ravitaillement",
     "debugLogging": "Journal de débogage",
     "quit": "Quitter",
     "discord": {
@@ -539,6 +540,7 @@
       "updateRate": "À quelle fréquence les chiffres du compteur se rafraîchissent. Plus rapide affiche les coups plus tôt mais utilise plus de CPU.",
       "partyPresence": "Les membres du groupe qui utilisent aussi A2Tools voient une petite étiquette A2 à côté de votre nom, et vous voyez la leur. Tout membre du groupe utilisant A2Tools peut la voir et saura donc que vous utilisez un meter tiers. Seuls des hachages des noms de personnages et des serveurs sont envoyés.",
       "shareBossTimers": "Partage les minuteurs des boss de terrain avec les autres joueurs via a2tools.app (et son partenaire Aion 2 Timers) : les boss de votre carte quand vous l'ouvrez, et les boss de terrain que vous voyez tués, et leurs PV pendant que vous les combattez. Seuls le serveur, les boss, leurs heures et PV sont envoyés.",
+      "shareSupplyRequests": "Partage les tableaux de demandes de ravitaillement de votre serveur avec le Profiteer d'a2tools.app quand ils changent (après chaque réinitialisation) : le serveur, les tableaux et leurs demandes. Rien sur votre personnage ni sa progression n'est envoyé.",
       "debugLogging": "Écrit un journal de diagnostic que le développeur peut utiliser pour trouver les problèmes.",
       "saveRawPackets": "Enregistre le trafic brut du jeu pour les rapports de bug. Le journal de débogage s'active avec.",
       "globalHotkeys": "Les touches ci-dessous fonctionnent partout, même quand le jeu est au premier plan. Désactivé, elles sont libérées pour d'autres programmes. Sous Linux, le bureau les enregistre et peut vous demander de les approuver.",

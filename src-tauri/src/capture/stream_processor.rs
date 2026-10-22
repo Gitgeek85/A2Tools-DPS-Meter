@@ -289,6 +289,10 @@ impl StreamProcessor {
         if let Some(state) = crate::capture::abyss_artifacts::parse(packet) {
             self.data_storage.note_abyss_artifacts(state);
         }
+        // The Supply Requests boards (at login), for Profiteer.
+        if let Some(boards) = crate::capture::supply_requests::parse(packet) {
+            self.data_storage.note_supply_requests(boards);
+        }
 
         if !parsed_damage && !parsed_name && !parsed_summon && !parsed_ownership && !parsed_hp {
             self.parse_dot_packet(packet);

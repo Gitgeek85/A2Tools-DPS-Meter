@@ -102,6 +102,7 @@ class DpsApp {
       language: "dpsMeter.language",
       debugLogging: "dpsMeter.debugLoggingEnabled",
       shareBossTimers: "dpsMeter.shareBossTimers",
+      shareSupplyRequests: "dpsMeter.shareSupplyRequests",
       pinMeToTop: "dpsMeter.pinMeToTop",
       mainPlayerNamesBold: "dpsMeter.mainPlayerNamesBold",
       showSupporterColors: "dpsMeter.showSupporterColors",
@@ -2640,6 +2641,7 @@ class DpsApp {
     this.bossLogsCheckbox = document.querySelector(".bossLogsCheckbox");
     this.debugLoggingCheckbox = document.querySelector(".debugLoggingCheckbox");
     this.shareBossTimersCheckbox = document.querySelector(".shareBossTimersCheckbox");
+    this.shareSupplyRequestsCheckbox = document.querySelector(".shareSupplyRequestsCheckbox");
     this.partyPresenceCheckbox = document.querySelector(".partyPresenceCheckbox");
     this.showPingCheckbox = document.querySelector(".showPingCheckbox");
     this.showOdyleCheckbox = document.querySelector(".showOdyleCheckbox");
@@ -2891,6 +2893,14 @@ class DpsApp {
       this.shareBossTimersCheckbox.checked = this.safeGetSetting(this.storageKeys.shareBossTimers) !== "false";
       this.shareBossTimersCheckbox.addEventListener("change", (event) => {
         this.safeSetSetting(this.storageKeys.shareBossTimers, event.target?.checked ? "true" : "false");
+      });
+    }
+    // The Supply Requests boards, shared with Profiteer (supply_report.rs):
+    // on unless turned off.
+    if (this.shareSupplyRequestsCheckbox) {
+      this.shareSupplyRequestsCheckbox.checked = this.safeGetSetting(this.storageKeys.shareSupplyRequests) !== "false";
+      this.shareSupplyRequestsCheckbox.addEventListener("change", (event) => {
+        this.safeSetSetting(this.storageKeys.shareSupplyRequests, event.target?.checked ? "true" : "false");
       });
     }
     if (this.debugLoggingCheckbox) {
