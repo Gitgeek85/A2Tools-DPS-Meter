@@ -2472,12 +2472,20 @@ fn parse_party_roster_at(data: &[u8], at: usize) -> Option<Roster> {
         // instead, a byte further on: Aylinn, of 2308, as `07 fe 08` (2302)
         // where the others had `00 09` (2026-10-17). Not finding it lost her
         // and every member after her. Any world then, with a combat power
-        // where it would be.
+        // where it would be, and the tag byte before it: always 1-4 (71 448
+        // members of one player's saved rosters, 2026-10-23). Without the tag,
+        // a world whose low byte is small read one byte early, the byte before
+        // it as its low byte: Ardilcan of Beritra on such a world showed
+        // 23 371 012 (his 91 293, shifted a byte, and the tag 4). Read there, the
+        // tag is the second u16's high byte, `10` or the world's own.
         let Some(anchor) = find_u16(data, o, o + 10, server_id).or_else(|| {
             (o..o + 10).find(|&i| {
                 let world = data.get(i..i + 2).map(|b| u16::from_le_bytes([b[0], b[1]]));
+                let tag = data.get(i + 4);
                 let power = data.get(i + 5..i + 13).map(|b| u64::from_le_bytes(b.try_into().unwrap()));
-                world.is_some_and(|w| (1000..=2999).contains(&w)) && power.is_some_and(|p| (1..=100_000_000).contains(&p))
+                world.is_some_and(|w| (1000..=2999).contains(&w))
+                    && tag.is_some_and(|t| (1..=4).contains(t))
+                    && power.is_some_and(|p| (1..=100_000_000).contains(&p))
             })
         }) else {
             break;
@@ -3622,6 +3630,22 @@ mod tests {
             ]
         );
         assert!(complete);
+    }
+
+    /// The same member on a world whose low byte is small: Aylinn's record
+    /// with her party on 2313 (`09 09`) instead of 2302. The byte before the
+    /// world (`07`) and its low byte read as world 2311, so the search took the
+    /// spot one byte early and read her combat power shifted by a byte: her
+    /// 86 760 as 22 210 564 (86 760 × 256 + the tag byte). Ardilcan of Beritra
+    /// showed 23 371 012 for his 91 293 this way (2026-10-23).
+    #[test]
+    fn roster_reads_a_visitors_combat_power_on_any_world() {
+        let hex = "029771931a001d416c6c20626f7373657320616c742072756e204c46206368616e74657205cc2709000003f0b3030000000009ff0202051e01f0b303000000000906416c66697261200000002d000000db0500000009cd1004be1201000000000000300000000000000001051e02e9b70200000002090553656c75650c0000002d000000f30600000209cd1004f85201000000000000790000000000000001051e03e212040000000009064e79786572611c0000002d000000cc0500000009cd1004210001000000000000250000000000000001051e04efd10200000004090641796c696e6e1c0000002d0000001d080000070909cd1004e85201000000000000750000000000000001051e05b28602000000240508526f794261747479210000002d000000990600002405cd1003234301000000000000b20000000000000001050009";
+        let data: Vec<u8> = (0..hex.len() / 2).map(|i| u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap()).collect();
+        let Roster { members, .. } = parse_party_roster_at(&data, 2).expect("a roster");
+        let got: Vec<(String, i64)> = members.iter().map(|(n, m)| (n.clone(), m.combat_power)).collect();
+        assert_eq!(got[3], ("Aylinn".to_string(), 86760));
+        assert_eq!(got[4], ("RoyBatty".to_string(), 82723));
     }
 
     /// A Spiritmaster's spirits send `04 38` records to their owner on each
