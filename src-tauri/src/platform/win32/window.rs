@@ -168,6 +168,64 @@ pub fn click_through_except(_window: &tauri::WebviewWindow, _ignore: bool, _keep
     false
 }
 
+/// A plugin widget's click-through, by a window region: `keep` (rectangles
+/// in CSS px, and the page's scale) takes the mouse and the rest of the
+/// window lets clicks through to the game. Unlocked widgets of Event Timers'
+/// grid took every click over their frame, empty cells included, as the
+/// region was Linux's alone (2026-10-24). `ignore` without `keep`: clicks go
+/// through everywhere (locked); not `ignore`: the whole window takes them.
+/// A window region clips what is drawn too, which costs nothing here: a
+/// widget's window is transparent outside what it draws.
+pub fn widget_click_through(window: &tauri::WebviewWindow, ignore: bool, keep: Option<(&[(f64, f64, f64, f64)], f64)>) -> bool {
+    if hwnd_of(window).is_none() {
+        return false;
+    }
+    let mut rects: Vec<(i32, i32, i32, i32)> = keep
+        .filter(|_| ignore)
+        .map(|(rects, scale)| {
+            rects
+                .iter()
+                .map(|&(x, y, w, h)| {
+                    ((x * scale).floor() as i32, (y * scale).floor() as i32, ((x + w) * scale).ceil() as i32, ((y + h) * scale).ceil() as i32)
+                })
+                .filter(|&(l, t, r, b)| r > l && b > t)
+                .collect()
+        })
+        .unwrap_or_default();
+    // An area with nothing in it: a point, as on Linux, so the frame's empty
+    // space doesn't keep clicks from the game.
+    if ignore && keep.is_some() && rects.is_empty() {
+        rects.push((0, 0, 1, 1));
+    }
+    // The region goes with the lock: whole window (unlocked, no area, or
+    // locked: then clicks pass by the cursor setting instead), or its parts.
+    let through_all = ignore && keep.is_none();
+    let target = window.clone();
+    let _ = window.run_on_main_thread(move || {
+        use windows::Win32::Graphics::Gdi::{CombineRgn, CreateRectRgn, DeleteObject, HGDIOBJ, SetWindowRgn, RGN_OR};
+        // Looked up here: a window handle doesn't cross threads.
+        let Some(hwnd) = hwnd_of(&target) else { return };
+        unsafe {
+            if rects.is_empty() {
+                SetWindowRgn(hwnd, None, true);
+            } else {
+                let region = CreateRectRgn(0, 0, 0, 0);
+                for &(l, t, r, b) in &rects {
+                    let part = CreateRectRgn(l, t, r, b);
+                    CombineRgn(Some(region), Some(region), Some(part), RGN_OR);
+                    let _ = DeleteObject(HGDIOBJ(part.0));
+                }
+                // The system owns the region once set.
+                if SetWindowRgn(hwnd, Some(region), true) == 0 {
+                    let _ = DeleteObject(HGDIOBJ(region.0));
+                }
+            }
+        }
+        let _ = target.set_ignore_cursor_events(through_all);
+    });
+    true
+}
+
 /// Hide a plugin window so it comes back where it was. Here a hidden window
 /// keeps its place, so it is simply hidden (Linux keeps it mapped instead).
 pub fn hide_in_place(window: &tauri::WebviewWindow) {

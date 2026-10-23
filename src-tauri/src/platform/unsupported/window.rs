@@ -110,3 +110,9 @@ pub fn tray_supported() -> bool {
 pub fn click_through_by_region() -> bool {
     false
 }
+
+/// A plugin widget's click-through by parts: not here (the window's own
+/// cursor setting does it whole).
+pub fn widget_click_through(_window: &tauri::WebviewWindow, _ignore: bool, _keep: Option<(&[(f64, f64, f64, f64)], f64)>) -> bool {
+    false
+}
