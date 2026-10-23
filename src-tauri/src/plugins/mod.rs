@@ -1285,6 +1285,13 @@ pub fn plugin_remove_folder(app: tauri::AppHandle, path: String) -> Result<Plugi
 
 /// Remember a plugin window's state for the next start (`None`: closed).
 fn remember_window(app: &tauri::AppHandle, id: &str, state: Option<&str>) {
+    // The plugin hears it ("visible"): its page stays loaded while hidden,
+    // and the browser's own visibility doesn't change for a hidden window or
+    // dock tab. Event Timers' anchor frame stayed up with the window hidden
+    // on its Settings tab (2026-10-24).
+    if let Some(shown) = state.and_then(|s| match s { "shown" => Some(true), "hidden" => Some(false), _ => None }) {
+        emit_plugin(app, id, serde_json::json!({ "plugin": id, "event": "visible", "data": shown }));
+    }
     let Some(settings) = app.try_state::<AppState>() else { return };
     let mut windows: serde_json::Map<String, Value> =
         settings.settings.get(WINDOWS_KEY).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
@@ -1709,6 +1716,7 @@ pub fn plugin_hello(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin:
         "character": character,
         "language": language,
         "theme": plugin_theme(&app),
+        "visible": window_shown(&app, &id),
         "reviewed": reviewed,
         "game": crate::platform::window_detector::find_aion2_window(),
         "ping": app.try_state::<AppState>().and_then(|s| s.ping_tracker.current_ping_ms()),
@@ -1729,6 +1737,13 @@ pub fn plugin_debug_frame(app: tauri::AppHandle, hex: String) -> Result<(), Stri
         .map_err(|e| e.to_string())?;
     host(&app)?.on_frame(&app, &bytes);
     Ok(())
+}
+
+/// Whether plugin `id`'s window (or dock tab) is shown, as it was left.
+fn window_shown(app: &tauri::AppHandle, id: &str) -> bool {
+    let windows: serde_json::Map<String, Value> =
+        app.try_state::<AppState>().and_then(|s| s.settings.get(WINDOWS_KEY)).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    windows.get(id).and_then(Value::as_str) != Some("hidden")
 }
 
 /// Where the Settings colours plugin windows take are kept.
