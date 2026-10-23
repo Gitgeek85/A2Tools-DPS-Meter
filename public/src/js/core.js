@@ -1133,12 +1133,16 @@ class DpsApp {
   // over the meter, or the window stops taking the mouse under it. The
   // tooltip then stayed up until the row was hovered and left again. While
   // it shows, ask where the pointer really is and close it once it is off
-  // the row. Where the pointer can't be read (native Wayland, so KDE: Hirai
-  // still saw it stuck after the fix, 2026-10-24) the tooltip closes when
-  // the pointer leaves the window, and after 4 s with no pointer movement
-  // over the meter (the game holding the pointer sends the meter nothing).
+  // the row. On Linux that isn't enough: a native Wayland window can't read
+  // the pointer, and under XWayland the pointer read is the last one X saw
+  // in the meter while it is over the game or a Wayland window, so still on
+  // the row (Hirai, KDE, stuck through both fixes, 2026-10-24). There the
+  // tooltip also closes when the pointer leaves the window, and after 4 s
+  // with no pointer movement over the meter (the game holding the pointer
+  // sends the meter nothing).
   watchHoverPointer() {
     if (this.hoverPointerWatch || !window.javaBridge?.pointerInWindow) return;
+    if (document.documentElement?.classList?.contains?.("linux")) this.hoverIdleOnly = true;
     this.watchHoverIdle();
     this.hoverPointerWatch = setInterval(async () => {
       const rowId = this.hoveredDetailsRowId;
@@ -1159,8 +1163,9 @@ class DpsApp {
     }, 300);
   }
 
-  // The fallback where the pointer can't be read (see watchHoverPointer):
-  // set up once; it acts only after the pointer check found it unreadable.
+  // The fallback where the pointer can't be trusted (see watchHoverPointer):
+  // set up once; it acts on Linux, or once the pointer check found it
+  // unreadable.
   watchHoverIdle() {
     if (this.hoverIdleWatch) return;
     this.lastPointerMoveAt = Date.now();
