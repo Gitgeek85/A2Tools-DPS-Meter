@@ -1628,7 +1628,9 @@ pub fn plugin_window(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin
             return Ok(());
         }
         remember_window(&app, &id, Some(if visible { "shown" } else { "hidden" }));
-        dock::sync(&app, None);
+        // Shown: on its own tab (a widget double-clicked opened the dock on
+        // whichever tab was open before).
+        dock::sync(&app, visible.then_some(id.as_str()));
         return Ok(());
     }
     // Hidden in place where the window manager would place it anew on
