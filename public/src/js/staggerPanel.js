@@ -293,24 +293,18 @@ const createStaggerPanel = ({ root, describeActor = () => null }) => {
     return el;
   };
 
+  // The section shows only for a fight with a stagger window: a fight with
+  // no stagger data (an older one, or any log on a2tools.app, whose slices
+  // carry no gauges) or none worn down has nothing to say, and every trash
+  // fight saying "none" was noise. Its toggle chip goes with it.
   const render = () => {
     if (!body) return;
     hideTooltip();
     body.replaceChildren();
-    if (!data) return;
-    if (data.older) {
-      body.appendChild(note(t("details.stagger.older", "No stagger data for this fight (recorded by an older version).")));
-      return;
-    }
-    if (data.loading && !data.windows) {
-      body.appendChild(note(t("details.stagger.loading", "Loading...")));
-      return;
-    }
-    const windows = orderStaggerWindows(data.windows, data.targetId);
-    if (!windows.length || !(Number(data.durationMs) > 0)) {
-      body.appendChild(note(t("details.stagger.none", "No stagger gauge was worn down in this fight.")));
-      return;
-    }
+    const windows = data && !data.older ? orderStaggerWindows(data.windows, data.targetId) : [];
+    const shown = windows.length > 0 && Number(data?.durationMs) > 0;
+    root?.classList?.toggle?.("noStagger", !shown);
+    if (!shown) return;
     windows.forEach((w, i) => body.appendChild(windowEl(w, i)));
   };
 

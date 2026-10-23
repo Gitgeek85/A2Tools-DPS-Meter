@@ -7521,6 +7521,12 @@ html.a2-offline .historyUploadBtn {
 .detailsPanel .fightTimeline.hide-casts .ftlGroupCasts {
   display: none;
 }
+/* No stagger window in the fight (staggerPanel.js): neither the section nor
+   its toggle chip. */
+.detailsPanel .fightTimeline.noStagger .ftlGroupStagger,
+.detailsPanel .fightTimeline.noStagger [data-ftl-section="stagger"] {
+  display: none;
+}
 /* HEAL without heal times has no chart or casts to show. */
 .detailsPanel .fightTimeline.isHealMode.noHealTiming [data-ftl-section="dps"],
 .detailsPanel .fightTimeline.isHealMode.noHealTiming [data-ftl-section="casts"] {

@@ -339,7 +339,7 @@ class DpsApp {
       this.showOdyle = this.safeGetSetting(this.storageKeys.showOdyle) === "true";
       this.showTtk = this.safeGetSetting(this.storageKeys.showTtk) !== "false";
       this.showHealModes = this.safeGetSetting(this.storageKeys.showHealModes) !== "false";
-      this.showStaggerMode = this.safeGetSetting(this.storageKeys.showStaggerMode) !== "false";
+      this.showStaggerMode = this.safeGetSetting(this.storageKeys.showStaggerMode) === "true";
       this.showTotalDps = this.safeGetSetting(this.storageKeys.showTotalDps) !== "false";
       this.roundDps = this.safeGetSetting(this.storageKeys.roundDps) !== "false";
       this.showDpsSuffix = this.safeGetSetting(this.storageKeys.showDpsSuffix) !== "false";
@@ -500,8 +500,8 @@ class DpsApp {
     this.showTtk = this.safeGetSetting(this.storageKeys.showTtk) !== "false";
     // HPS and total heal in the DPS/DMG button's cycle; on unless turned off.
     this.showHealModes = this.safeGetSetting(this.storageKeys.showHealModes) !== "false";
-    // Stagger in the same cycle, after healing; on unless turned off.
-    this.showStaggerMode = this.safeGetSetting(this.storageKeys.showStaggerMode) !== "false";
+    // Stagger in the same cycle, after healing; off unless turned on.
+    this.showStaggerMode = this.safeGetSetting(this.storageKeys.showStaggerMode) === "true";
     this.ttk = typeof createTtkEstimator === "function" ? createTtkEstimator() : null;
     // Ping is pushed immediately from PingTracker via window._dpsApp.updatePing().
     // A slow fallback poll handles edge cases (e.g. push not wired yet on startup).
@@ -5504,7 +5504,8 @@ class DpsApp {
   displayModes() {
     const modes = ["totalDamage", "both"];
     if (this.showHealModes !== false) modes.push("hps", "totalHeal");
-    if (this.showStaggerMode !== false) modes.push("stagger");
+    // Off unless turned on: checked on only a few bosses so far.
+    if (this.showStaggerMode === true) modes.push("stagger");
     return modes;
   }
 

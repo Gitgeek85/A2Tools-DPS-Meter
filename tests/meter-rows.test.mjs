@@ -42,6 +42,9 @@ test("by name as before, and nobody's without either", () => {
 test("stagger is a mode of the DPS/DMG button, read from each row, unless turned off", () => {
   const dps = app("Mine");
   dps.updateDisplayToggleLabel = () => {};
+  // Off by default: only once turned on is Stagger in the cycle.
+  assert.deepEqual(Array.from(dps.displayModes()), ["totalDamage", "both", "hps", "totalHeal"]);
+  dps.showStaggerMode = true;
   const rows = dps.buildRowsFromMapObject({ 5: { ...row("Mine", 10), stagger: 35 }, 6: row("Other", 20) });
   assert.deepEqual(Array.from(rows, (r) => r.stagger).sort(), [0, 35]);
   dps.setDisplayMode("stagger");
