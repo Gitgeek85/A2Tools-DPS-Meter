@@ -219,6 +219,13 @@ fn settled() -> &'static std::sync::Mutex<std::collections::HashMap<String, bool
     SETTLED.get_or_init(Default::default)
 }
 
+/// Whether a mouse button (the primary, or the secondary for a swapped
+/// mouse) is held down now.
+fn mouse_button_held() -> bool {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON, VK_RBUTTON};
+    unsafe { (GetAsyncKeyState(VK_LBUTTON.0 as i32) | GetAsyncKeyState(VK_RBUTTON.0 as i32)) as u16 & 0x8000 != 0 }
+}
+
 /// Start the pointer watch if it isn't running; it ends once no widget needs it.
 fn watch_widgets() {
     static RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -226,6 +233,13 @@ fn watch_widgets() {
         return;
     }
     std::thread::spawn(|| loop {
+        // A button held: a widget being dragged (the pointer is on its part
+        // anyway) or a click under way. Nothing changes then, and asking the
+        // main thread for positions mid-drag cost the game frames.
+        if mouse_button_held() {
+            std::thread::sleep(std::time::Duration::from_millis(40));
+            continue;
+        }
         let pointer = cursor_position();
         // What to look at, copied out: a window's position and its cursor
         // setting go through the main thread, and the main thread takes this
