@@ -995,8 +995,11 @@ impl StreamProcessor {
                 roster.complete,
                 roster.dungeon_id
             );
+            if self.data_storage.is_other_party(roster.party_key, &roster.members, roster.complete) {
+                continue;
+            }
             self.data_storage.set_current_dungeon(roster.dungeon_id);
-            self.data_storage.set_party_roster(roster.members, roster.complete);
+            self.data_storage.set_party_roster_of(Some(roster.party_key), roster.members, roster.complete);
         }
     }
 
@@ -2378,6 +2381,7 @@ fn should_use_repeated_hit_damage(switch_value: i32, encoded_damage: i32, multi_
 fn parse_party_roster_at(data: &[u8], at: usize) -> Option<Roster> {
     use crate::combat::data_storage::PartyMember;
 
+    let party_key = parse_u32_le(data.get(at..at + 4)?, 0);
     let mut o = at.checked_add(4)?; // party_key u32
     let name_len = *data.get(o)? as usize;
     o += 1;
@@ -2517,7 +2521,7 @@ fn parse_party_roster_at(data: &[u8], at: usize) -> Option<Roster> {
     if members.is_empty() {
         return None;
     }
-    Some(Roster { members, complete, dungeon_id, name_fields })
+    Some(Roster { party_key, members, complete, dungeon_id, name_fields })
 }
 
 /// Find a little-endian `u16` equal to `wanted` in `data[from..to]`.
@@ -3088,6 +3092,7 @@ fn player_spawn_at(data: &[u8], offset_after_opcode: usize) -> Option<(i32, Stri
 
 /// A party roster as `StreamProcessor::scan_party_roster` reads it.
 struct Roster {
+    party_key: u32,
     members: Vec<(String, crate::combat::data_storage::PartyMember)>,
     complete: bool,
     dungeon_id: i32,
