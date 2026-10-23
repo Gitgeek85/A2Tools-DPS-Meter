@@ -168,62 +168,74 @@ pub fn click_through_except(_window: &tauri::WebviewWindow, _ignore: bool, _keep
     false
 }
 
-/// A plugin widget's click-through, by a window region: `keep` (rectangles
-/// in CSS px, and the page's scale) takes the mouse and the rest of the
-/// window lets clicks through to the game. Unlocked widgets of Event Timers'
-/// grid took every click over their frame, empty cells included, as the
-/// region was Linux's alone (2026-10-24). `ignore` without `keep`: clicks go
-/// through everywhere (locked); not `ignore`: the whole window takes them.
-/// A window region clips what is drawn too, which costs nothing here: a
-/// widget's window is transparent outside what it draws.
+/// A widget's click-through: locked, clicks pass everywhere; unlocked, only
+/// its drawn parts (`keep`: CSS-px rects and the page's scale) take them, so
+/// an Event Timers grid's empty cells let the game have its clicks.
+///
+/// By a pointer watch, as the overlay's lock: while any unlocked widget has
+/// parts, a thread looks at the pointer every 40 ms and lets the clicks
+/// through except over a part. A window region did it first, but Windows
+/// then drew the borderless widget's title bar and buttons back over it.
 pub fn widget_click_through(window: &tauri::WebviewWindow, ignore: bool, keep: Option<(&[(f64, f64, f64, f64)], f64)>) -> bool {
     if hwnd_of(window).is_none() {
         return false;
     }
-    let mut rects: Vec<(i32, i32, i32, i32)> = keep
-        .filter(|_| ignore)
-        .map(|(rects, scale)| {
-            rects
+    let label = window.label().to_string();
+    match keep.filter(|_| ignore) {
+        Some((rects, scale)) => {
+            let parts = rects
                 .iter()
-                .map(|&(x, y, w, h)| {
-                    ((x * scale).floor() as i32, (y * scale).floor() as i32, ((x + w) * scale).ceil() as i32, ((y + h) * scale).ceil() as i32)
-                })
+                .map(|&(x, y, w, h)| ((x * scale).floor() as i32, (y * scale).floor() as i32, ((x + w) * scale).ceil() as i32, ((y + h) * scale).ceil() as i32))
                 .filter(|&(l, t, r, b)| r > l && b > t)
-                .collect()
-        })
-        .unwrap_or_default();
-    // An area with nothing in it: a point, as on Linux, so the frame's empty
-    // space doesn't keep clicks from the game.
-    if ignore && keep.is_some() && rects.is_empty() {
-        rects.push((0, 0, 1, 1));
-    }
-    // The region goes with the lock: whole window (unlocked, no area, or
-    // locked: then clicks pass by the cursor setting instead), or its parts.
-    let through_all = ignore && keep.is_none();
-    let target = window.clone();
-    let _ = window.run_on_main_thread(move || {
-        use windows::Win32::Graphics::Gdi::{CombineRgn, CreateRectRgn, DeleteObject, HGDIOBJ, SetWindowRgn, RGN_OR};
-        // Looked up here: a window handle doesn't cross threads.
-        let Some(hwnd) = hwnd_of(&target) else { return };
-        unsafe {
-            if rects.is_empty() {
-                SetWindowRgn(hwnd, None, true);
-            } else {
-                let region = CreateRectRgn(0, 0, 0, 0);
-                for &(l, t, r, b) in &rects {
-                    let part = CreateRectRgn(l, t, r, b);
-                    CombineRgn(Some(region), Some(region), Some(part), RGN_OR);
-                    let _ = DeleteObject(HGDIOBJ(part.0));
-                }
-                // The system owns the region once set.
-                if SetWindowRgn(hwnd, Some(region), true) == 0 {
-                    let _ = DeleteObject(HGDIOBJ(region.0));
-                }
-            }
+                .collect();
+            watched().lock().unwrap_or_else(|p| p.into_inner()).insert(label, (window.clone(), parts, None));
+            watch_widgets();
         }
-        let _ = target.set_ignore_cursor_events(through_all);
-    });
+        None => {
+            watched().lock().unwrap_or_else(|p| p.into_inner()).remove(&label);
+            let _ = window.set_ignore_cursor_events(ignore);
+        }
+    }
     true
+}
+
+/// The unlocked widgets with parts: each window, its parts (client pixels:
+/// left, top, right, bottom) and whether it lets clicks through now.
+type Watched = std::collections::HashMap<String, (tauri::WebviewWindow, Vec<(i32, i32, i32, i32)>, Option<bool>)>;
+fn watched() -> &'static std::sync::Mutex<Watched> {
+    static WATCHED: std::sync::OnceLock<std::sync::Mutex<Watched>> = std::sync::OnceLock::new();
+    WATCHED.get_or_init(Default::default)
+}
+
+/// Start the pointer watch if it isn't running; it ends once no widget needs it.
+fn watch_widgets() {
+    static RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    std::thread::spawn(|| loop {
+        let pointer = cursor_position();
+        {
+            let mut watched = watched().lock().unwrap_or_else(|p| p.into_inner());
+            if watched.is_empty() {
+                RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+                return;
+            }
+            watched.retain(|_, (window, parts, through)| {
+                let Ok(origin) = window.inner_position() else { return false };
+                let over = pointer.is_some_and(|(px, py)| {
+                    let (x, y) = (px - origin.x, py - origin.y);
+                    parts.iter().any(|&(l, t, r, b)| x >= l && x < r && y >= t && y < b)
+                });
+                if *through != Some(!over) {
+                    *through = Some(!over);
+                    let _ = window.set_ignore_cursor_events(!over);
+                }
+                true
+            });
+        }
+        std::thread::sleep(std::time::Duration::from_millis(40));
+    });
 }
 
 /// Hide a plugin window so it comes back where it was. Here a hidden window
