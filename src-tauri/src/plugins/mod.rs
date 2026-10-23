@@ -1062,26 +1062,45 @@ pub fn find_updates_at_start(app: &tauri::AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(UPDATE_ALERT_DELAY).await;
-        let Ok(host) = host(&app) else { return };
-        let Some(state) = app.try_state::<AppState>() else { return };
-        let catalog = match catalog::fetch(&state.http).await {
-            Ok(catalog) => catalog,
-            Err(e) => {
-                tracing::info!("Plugins: update check at start failed: {e}");
-                return;
-            }
-        };
-        let declined: HashMap<String, String> =
-            state.settings.get(DECLINED_UPDATES_KEY).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
-        let updates = updates_to_offer(newer_entries(catalog, &host), &declined);
-        if updates.is_empty() {
+        // At start, then every 6 hours for a meter left running for days.
+        // Each check replaces what the title offers: updates installed from
+        // Settings meanwhile drop out of it.
+        loop {
+            find_updates(&app).await;
+            tokio::time::sleep(UPDATE_RECHECK).await;
+        }
+    });
+}
+
+/// How often the plugin updates are looked for again after the first time.
+#[cfg(feature = "online")]
+const UPDATE_RECHECK: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
+
+/// Look for plugin updates once, and have the meter's title offer them.
+#[cfg(feature = "online")]
+async fn find_updates(app: &tauri::AppHandle) {
+    let Ok(host) = host(app) else { return };
+    let Some(state) = app.try_state::<AppState>() else { return };
+    let catalog = match catalog::fetch(&state.http).await {
+        Ok(catalog) => catalog,
+        Err(e) => {
+            tracing::info!("Plugins: update check failed: {e}");
             return;
         }
+    };
+    let declined: HashMap<String, String> =
+        state.settings.get(DECLINED_UPDATES_KEY).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    let updates = updates_to_offer(newer_entries(catalog, &host), &declined);
+    if !updates.is_empty() {
         let names = updates.iter().map(|(u, _)| format!("{} {} → {}", u.id, u.from, u.to)).collect::<Vec<_>>().join(", ");
         tracing::info!("Plugins: updates available: {names}");
-        *pending_updates().lock().unwrap_or_else(|p| p.into_inner()) = updates;
-        tell_pending(&app);
-    });
+    }
+    let had = !pending_updates().lock().unwrap_or_else(|p| p.into_inner()).is_empty();
+    if updates.is_empty() && !had {
+        return;
+    }
+    *pending_updates().lock().unwrap_or_else(|p| p.into_inner()) = updates;
+    tell_pending(app);
 }
 
 /// The updates found at start and not yet offered.
