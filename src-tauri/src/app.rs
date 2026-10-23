@@ -184,15 +184,15 @@ fn meter_shown(app: tauri::AppHandle) -> bool {
 /// (Linux), else as usual. The page re-measures, as its content may have
 /// changed meanwhile.
 fn show_meter_again(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
-    if platform::window::reveal_in_place(window) {
-        // Revealing takes the mouse back; the lock decides that.
-        if let Some(state) = app.try_state::<AppState>() {
-            let lock = state.overlay_lock.clone();
-            *lock.applied.lock() = None;
-            sync_click_through(app, &lock, false);
-        }
-    } else {
+    if !platform::window::reveal_in_place(window) {
         platform::window::show_on_top_without_focus(window);
+    }
+    // Shown again, the window takes the mouse (revealed, or a new surface
+    // where it was unmapped, KDE): the lock decides that anew.
+    if let Some(state) = app.try_state::<AppState>() {
+        let lock = state.overlay_lock.clone();
+        *lock.applied.lock() = None;
+        sync_click_through(app, &lock, false);
     }
     let _ = window.emit("force-resize", ());
 }

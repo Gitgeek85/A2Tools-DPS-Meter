@@ -167,6 +167,7 @@ fn query_pointer() -> Option<(i32, i32, u32)> {
 /// tool left the front (`screenshot_tool` gives every window the mouse back).
 pub fn click_through_except(window: &tauri::WebviewWindow, ignore: bool, keep: Option<(f64, f64, f64, f64, f64)>) -> bool {
     use gtk::{cairo, prelude::*};
+    click_through_asked().lock().unwrap_or_else(|p| p.into_inner()).insert(window.label().to_string(), (ignore, keep));
     let (ignore, keep) = if is_hidden_in_place(window) { (true, None) } else { (ignore, keep) };
     let window = window.clone();
     super::dialog::on_gtk_thread(move || {
@@ -200,8 +201,19 @@ pub fn start_drag(window: &tauri::WebviewWindow) {
 /// (KWin did, under XWayland, for each plugin alert), so GTK is told first
 /// not to take focus on map (`_NET_WM_USER_TIME` 0 on X11). Clicking the
 /// window still focuses it.
+///
+/// On KDE a window the meter hid is unmapped (`hide_in_place`), and shown
+/// again it is a new surface to KWin: it would take the focus (on Wayland
+/// GTK's hint does nothing), so the KWin script hands it back
+/// (`focus::note_quiet_show`). And the input region its click-through set
+/// went with the old surface, so a locked overlay or icon took the mouse
+/// again until something set it anew (Hirai, 2026-10-24): it is set again
+/// once the window is back.
 pub fn show_on_top_without_focus(window: &tauri::WebviewWindow) {
     use gtk::prelude::*;
+    if let Ok(title) = window.title() {
+        super::focus::note_quiet_show(&title);
+    }
     let target = window.clone();
     super::dialog::on_gtk_thread(move || {
         if let Ok(gtk_window) = target.gtk_window() {
@@ -210,6 +222,34 @@ pub fn show_on_top_without_focus(window: &tauri::WebviewWindow) {
     });
     let _ = window.show();
     let _ = window.set_always_on_top(true);
+    reapply_click_through(window);
+}
+
+/// The click-through each window last asked for (`click_through_except`):
+/// what `reapply_click_through` sets again.
+fn click_through_asked() -> &'static std::sync::Mutex<std::collections::HashMap<String, (bool, Option<(f64, f64, f64, f64, f64)>)>> {
+    static ASKED: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, (bool, Option<(f64, f64, f64, f64, f64)>)>>> =
+        std::sync::OnceLock::new();
+    ASKED.get_or_init(Default::default)
+}
+
+/// Set a window's last click-through again once it is mapped: shortly after
+/// it is shown, and once more a little later in case the compositor took
+/// its time.
+fn reapply_click_through(window: &tauri::WebviewWindow) {
+    let Some((ignore, keep)) = click_through_asked().lock().unwrap_or_else(|p| p.into_inner()).get(window.label()).copied() else {
+        return;
+    };
+    let window = window.clone();
+    tauri::async_runtime::spawn(async move {
+        for wait in [80, 400] {
+            tokio::time::sleep(std::time::Duration::from_millis(wait)).await;
+            if !window.is_visible().unwrap_or(false) {
+                return;
+            }
+            click_through_except(&window, ignore, keep);
+        }
+    });
 }
 
 /// Hide a window `show_on_top_without_focus` shows (see the Windows one).
