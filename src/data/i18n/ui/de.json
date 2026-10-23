@@ -10,8 +10,10 @@
       "ariaBoth": "Zeigt DPS und Gesamtschaden",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "STAG",
       "ariaHps": "Zeigt Heilung pro Sekunde",
-      "ariaHeal": "Zeigt Gesamtheilung"
+      "ariaHeal": "Zeigt Gesamtheilung",
+      "ariaStagger": "Zeigt den Stagger-Schaden an der Leiste des Bosses"
     },
     "updates": {
       "meter": "A2Tools DPS-Meter {version} ist verfügbar",
@@ -181,6 +183,25 @@
         "replaced": "Durch neue Stufe ersetzt"
       }
     },
+    "stagger": {
+      "title": "Stagger",
+      "unknownActor": "Unbekannt",
+      "unknownSkill": "Unbekannter Skill",
+      "older": "Keine Stagger-Daten für diesen Kampf (von einer älteren Version aufgezeichnet).",
+      "loading": "Lädt...",
+      "none": "In diesem Kampf wurde keine Stagger-Leiste abgebaut.",
+      "incomplete": "Der Startwert wurde nicht gesehen: früherer Stagger fehlt.",
+      "ambiguous": "Kann zu einem anderen Spieler gehören: Jemand anderes hat gleichzeitig getroffen.",
+      "ambiguousCount": "{n} Treffer können zu einem anderen Spieler gehören.",
+      "value": "{n} Stagger",
+      "ended": {
+        "break": "Gebrochen nach {secs} s",
+        "reset": "Verpasst: {missing} von {max} übrig",
+        "death": "Vor dem Break besiegt: {missing} von {max} übrig",
+        "despawn": "Vor dem Break verschwunden: {missing} von {max} übrig",
+        "fightEnd": "Bei Kampfende noch offen: {missing} von {max} übrig"
+      }
+    },
     "fightTimeline": "Kampfverlauf",
     "replay": {
       "label": "Wiedergabe",
@@ -282,6 +303,7 @@
     "odyleEnergy": "Odyle-Energie",
     "showTtk": "Geschätzte Kill-Zeit anzeigen",
     "showHealModes": "Heilung im DPS/DMG-Knopf anzeigen",
+    "showStaggerMode": "Stagger im DPS/DMG-Knopf anzeigen",
     "showTotalDps": "Gruppensumme anzeigen",
     "roundDps": "DPS in Tausend kürzen (13k)",
     "showDpsSuffix": "/s an DPS anhängen",
@@ -533,6 +555,7 @@
       "detailsMonitor": "Öffnet das Detailfenster auf dem gewählten Bildschirm und hält es dort.",
       "showTtk": "Neben dem Kampftimer eine Schätzung, wie lange der ganze Bosskampf dauert.",
       "showHealModes": "Der DPS/DMG-Knopf am Meter wechselt auch zu Heilung pro Sekunde und Gesamtheilung.",
+      "showStaggerMode": "Der DPS/DMG-Knopf am Meter zeigt auch, wie viel Stagger jeder Spieler von der Leiste des Bosses abgezogen hat.",
       "showTotalDps": "Eine Leiste unter den Zeilen mit DPS und Schaden der ganzen Gruppe.",
       "roundDps": "13.412 wird als 13k angezeigt.",
       "showSuspendBtn": "Eine Taste am Meter, die das Lesen des Spielverkehrs anhält, bis du sie erneut drückst.",

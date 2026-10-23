@@ -7517,7 +7517,14 @@ html.a2-offline .historyUploadBtn {
 .detailsPanel .fightTimeline.hide-dps .ftlGroupDps,
 .detailsPanel .fightTimeline.hide-buffs .ftlGroupBuffs,
 .detailsPanel .fightTimeline.hide-buffs .fightTimelineBar .buffToolbar,
+.detailsPanel .fightTimeline.hide-stagger .ftlGroupStagger,
 .detailsPanel .fightTimeline.hide-casts .ftlGroupCasts {
+  display: none;
+}
+/* No stagger window in the fight (staggerPanel.js): neither the section nor
+   its toggle chip. */
+.detailsPanel .fightTimeline.noStagger .ftlGroupStagger,
+.detailsPanel .fightTimeline.noStagger [data-ftl-section="stagger"] {
   display: none;
 }
 /* HEAL without heal times has no chart or casts to show. */
@@ -8690,4 +8697,115 @@ html.a2-offline .historyUploadBtn {
 .settingsPanel .pluginRemoveBtn:hover {
   color: #ffb4b4;
   border-color: rgba(229, 72, 77, 0.6);
+}
+
+/* ---------- details: stagger ----------
+   Each stagger window: a head row with the window on the fight's time, a
+   line saying how it ended, then a row per player (their share of the gauge
+   shaded behind their name, a tick per hit on the time lane), which opens
+   to a row per skill. The same columns as the buff rows. */
+
+.detailsPanel .ftlGroupStagger,
+.buffTooltip.staggerTooltip {
+  --stagger-break: #5fc48a;
+  --stagger-missed: var(--error-fill, #e06b6b);
+  --stagger-gone: #8fa3c0;
+  --stagger-warn: #f0c060;
+  --stagger-mark: #fff;
+}
+.detailsPanel .staggerBody {
+  padding: 0 12px 6px;
+}
+.detailsPanel .staggerWindow {
+  padding: 4px 0 6px;
+}
+.detailsPanel .staggerWindow + .staggerWindow {
+  border-top: 1px solid var(--hud-hairline, rgba(255, 255, 255, 0.07));
+}
+.detailsPanel .staggerHead .staggerEntity {
+  font-weight: 700;
+  color: var(--hud-name, rgba(255, 255, 255, 0.95));
+}
+.detailsPanel .staggerSpan {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  min-width: 2px;
+  border-radius: 2px;
+  opacity: 0.75;
+}
+.detailsPanel .staggerSpan.isBreak { background: var(--stagger-break); }
+.detailsPanel .staggerSpan.isMissed { background: var(--stagger-missed); }
+.detailsPanel .staggerSpan.isGone { background: var(--stagger-gone); }
+.detailsPanel .staggerBreakMark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--stagger-mark);
+  pointer-events: none;
+}
+.detailsPanel .staggerStatus {
+  padding: 1px 2px 4px;
+  font-size: 11px;
+}
+.detailsPanel .staggerStatus.isBreak { color: var(--stagger-break); }
+.detailsPanel .staggerStatus.isMissed { color: var(--stagger-missed); }
+.detailsPanel .staggerStatus.isGone { color: var(--hud-sub, rgba(255, 255, 255, 0.45)); }
+.detailsPanel .staggerValue {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.detailsPanel .staggerActor {
+  cursor: pointer;
+}
+.detailsPanel .staggerActor:hover,
+.detailsPanel .staggerActor:focus-visible {
+  outline: none;
+  background: var(--hud-row-bg, rgba(255, 255, 255, 0.05));
+}
+/* The player's share of the gauge, shaded behind their name. */
+.detailsPanel .staggerActorLabel {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--stagger-color, #8fa3c0) 28%, transparent) var(--stagger-share, 0%),
+    transparent var(--stagger-share, 0%)
+  );
+  border-radius: 2px;
+}
+.detailsPanel .staggerActor.isUnknown .buffName {
+  font-style: italic;
+  color: var(--hud-sub, rgba(255, 255, 255, 0.45));
+}
+.detailsPanel .staggerChevron {
+  flex: 0 0 auto;
+  font-size: 8px;
+  color: var(--hud-faint, rgba(255, 255, 255, 0.3));
+}
+.detailsPanel .staggerActor.isOpen .staggerChevron {
+  transform: rotate(90deg);
+}
+.detailsPanel .staggerWarn {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--stagger-warn);
+}
+.detailsPanel .staggerSkill .buffLabel {
+  padding-left: 16px;
+}
+.detailsPanel .staggerSkill .buffName {
+  color: var(--hud-sub, rgba(255, 255, 255, 0.45));
+}
+.detailsPanel .staggerTick {
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--stagger-gone);
+}
+.detailsPanel .staggerTick.isAmbiguous {
+  outline: 1px solid var(--stagger-warn);
 }

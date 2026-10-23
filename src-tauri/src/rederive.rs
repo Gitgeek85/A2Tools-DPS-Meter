@@ -273,6 +273,11 @@ fn canonicalise(record: &mut FightRecord) {
     if record.buffs.as_ref().is_some_and(|b| b.is_empty()) {
         record.buffs = None;
     }
+    // Stagger gauges (`05 E0`) are not on the slice's allowlist, so a slice
+    // derives none: "no data", and fight.json keeps its shape.
+    if record.stagger.as_ref().is_some_and(|w| w.is_empty()) {
+        record.stagger = None;
+    }
 }
 
 /// Bumped when the service derives differently from the meter of the same
@@ -566,6 +571,9 @@ mod tests {
         canonicalise(&mut record);
         assert!(record.buffs.is_none());
         assert!(serde_json::to_value(&record).unwrap().get("buffs").is_none(), "fight.json keeps its shape");
+        record.stagger = Some(Vec::new());
+        canonicalise(&mut record);
+        assert!(serde_json::to_value(&record).unwrap().get("stagger").is_none(), "fight.json keeps its shape");
     }
 
     #[test]

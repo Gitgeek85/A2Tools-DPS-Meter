@@ -1888,8 +1888,8 @@ const createDetailsUI = ({
   // Which of the timeline's sections show (chart, buffs, casts): the chips at
   // the bar's right; kept between openings.
   const SECTIONS_KEY = "dpsMeter.timelineSections";
-  const FTL_SECTIONS = ["dps", "buffs", "casts"];
-  const ftlShown = { dps: true, buffs: true, casts: true };
+  const FTL_SECTIONS = ["dps", "buffs", "stagger", "casts"];
+  const ftlShown = { dps: true, buffs: true, stagger: true, casts: true };
   try {
     const saved = JSON.parse(localStorage.getItem(SECTIONS_KEY) || "null");
     if (saved && typeof saved === "object") {
@@ -2735,20 +2735,32 @@ const createDetailsUI = ({
   // ── Buffs ──
   // A History fight's come with its record; a live fight's are asked for
   // once per refresh at most. They sit in the fight timeline, on its axis.
+  // A fight's actor as the buff and stagger sections name and colour it.
+  const describeActor = (id) => {
+    const actor = detailsActors.get(Number(id));
+    if (!actor) return null;
+    const job = actor.job || getActorJob(id);
+    const name = actor.nickname && actor.nickname !== String(id) ? actor.nickname : `#${id}`;
+    return { name, job, color: getJobColor(job) };
+  };
   const buffTimeline = typeof window.createBuffTimeline === "function"
     ? window.createBuffTimeline({
       root: fightTimeline,
-      describeActor: (id) => {
-        const actor = detailsActors.get(Number(id));
-        if (!actor) return null;
-        const job = actor.job || getActorJob(id);
-        const name = actor.nickname && actor.nickname !== String(id) ? actor.nickname : `#${id}`;
-        return { name, job, color: getJobColor(job) };
-      },
+      describeActor,
     })
     : null;
   let liveBuffs = null;
   let liveBuffsPending = false;
+
+  // ── Stagger ──
+  // Each boss gauge's windows on the same axis: a History fight's from its
+  // record, a live fight's with its buffs (get_fight_buffs).
+  const staggerPanel = typeof window.createStaggerPanel === "function"
+    ? window.createStaggerPanel({
+      root: fightTimeline,
+      describeActor,
+    })
+    : null;
 
   const buffTargetId = () => {
     if (historyRecord) return Number(historyRecord.targetId) || null;
@@ -2797,19 +2809,35 @@ const createDetailsUI = ({
       actorIds: [...detailsActors.keys()],
     };
     if (historyRecord) {
+      const durationMs = ftlDurationMs || Number(historyRecord.durationMs) || 0;
       buffTimeline.setData({
         ...common,
         older: !Array.isArray(historyRecord.buffs),
         tracks: Array.isArray(historyRecord.buffs) ? historyRecord.buffs : [],
-        durationMs: ftlDurationMs || Number(historyRecord.durationMs) || 0,
+        durationMs,
+      });
+      staggerPanel?.setData({
+        targetId,
+        targetName: common.targetName,
+        older: !Array.isArray(historyRecord.stagger),
+        windows: Array.isArray(historyRecord.stagger) ? historyRecord.stagger : [],
+        durationMs,
       });
       return;
     }
     const shown = targetId && liveBuffs && Number(liveBuffs.targetId) === targetId ? liveBuffs : null;
+    const durationMs = ftlDurationMs || Number(shown?.durationMs) || 0;
     buffTimeline.setData({
       ...common,
       tracks: shown ? shown.buffs : (targetId ? null : []),
-      durationMs: ftlDurationMs || Number(shown?.durationMs) || 0,
+      durationMs,
+      loading: !!targetId && !shown,
+    });
+    staggerPanel?.setData({
+      targetId,
+      targetName: common.targetName,
+      windows: shown ? (Array.isArray(shown.stagger) ? shown.stagger : []) : (targetId ? null : []),
+      durationMs,
       loading: !!targetId && !shown,
     });
   };
@@ -2825,7 +2853,7 @@ const createDetailsUI = ({
     window.dpsData.getFightBuffs(targetId)
       .then((result) => {
         if (seq !== openSeq || historyRecord) return;
-        liveBuffs = result || { targetId, durationMs: 0, buffs: [] };
+        liveBuffs = result || { targetId, durationMs: 0, buffs: [], stagger: [] };
         showBuffs();
       })
       .catch(() => {})
@@ -3520,6 +3548,7 @@ const createDetailsUI = ({
     historyRecord = null;
     liveBuffs = null;
     buffTimeline?.clear();
+    staggerPanel?.clear();
     window._historyDetailsOverride = null;
     fightStartMs = 0;
     fightBossName = "";

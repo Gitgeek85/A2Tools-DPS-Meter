@@ -442,11 +442,13 @@ async fn get_skill_details(app: tauri::AppHandle, target_id: i32, actor_ids: Opt
     }).await
 }
 
-/// The buffs and debuffs of the live fight on a target (Details' Buffs section).
+/// The buffs and debuffs of the live fight on a target (Details' Buffs
+/// section), and its stagger windows over `target_ids`, all the targets
+/// Details shows together (see `DpsCalculator::live_fight_buffs`).
 #[tauri::command]
-async fn get_fight_buffs(app: tauri::AppHandle, target_id: i32) -> Result<Option<crate::combat::fight_buffs::LiveFightBuffs>, String> {
+async fn get_fight_buffs(app: tauri::AppHandle, target_id: i32, target_ids: Option<Vec<i32>>) -> Result<Option<crate::combat::fight_buffs::LiveFightBuffs>, String> {
     crate::blocking::CALCULATIONS.run(move || {
-        details_reader(&app.state::<AppState>()).live_fight_buffs(target_id)
+        details_reader(&app.state::<AppState>()).live_fight_buffs(target_id, target_ids.as_deref().unwrap_or_default())
     }).await
 }
 
