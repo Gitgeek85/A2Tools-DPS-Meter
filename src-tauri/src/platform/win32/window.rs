@@ -200,3 +200,9 @@ pub fn reveal_in_place(_window: &tauri::WebviewWindow) -> bool {
 pub fn tray_supported() -> bool {
     true
 }
+
+/// Whether the click-through lock works by an input region, needing no
+/// pointer: not here, where a pointer watch keeps the lock button.
+pub fn click_through_by_region() -> bool {
+    false
+}

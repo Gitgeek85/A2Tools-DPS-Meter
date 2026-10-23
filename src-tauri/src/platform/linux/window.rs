@@ -124,6 +124,12 @@ fn on_x11() -> bool {
 /// native Wayland window cannot read it, so there the lock is not offered.
 /// The root coordinates are the space tao's `inner_position()` uses on X11,
 /// so the lock button's hit test lines up.
+/// Whether the click-through lock works by an input region, needing no
+/// pointer: here it does (`click_through_except`), on native Wayland too.
+pub fn click_through_by_region() -> bool {
+    true
+}
+
 pub fn cursor_position() -> Option<(i32, i32)> {
     query_pointer().map(|(x, y, _)| (x, y))
 }
