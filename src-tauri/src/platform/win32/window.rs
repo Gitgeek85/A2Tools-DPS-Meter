@@ -188,11 +188,16 @@ pub fn widget_click_through(window: &tauri::WebviewWindow, ignore: bool, keep: O
                 .map(|&(x, y, w, h)| ((x * scale).floor() as i32, (y * scale).floor() as i32, ((x + w) * scale).ceil() as i32, ((y + h) * scale).ceil() as i32))
                 .filter(|&(l, t, r, b)| r > l && b > t)
                 .collect();
+            settled().lock().unwrap_or_else(|p| p.into_inner()).remove(&label);
             watched().lock().unwrap_or_else(|p| p.into_inner()).insert(label, (window.clone(), parts, None));
             watch_widgets();
         }
         None => {
-            watched().lock().unwrap_or_else(|p| p.into_inner()).remove(&label);
+            {
+                let mut watched = watched().lock().unwrap_or_else(|p| p.into_inner());
+                watched.remove(&label);
+                settled().lock().unwrap_or_else(|p| p.into_inner()).insert(label, ignore);
+            }
             let _ = window.set_ignore_cursor_events(ignore);
         }
     }
@@ -207,6 +212,13 @@ fn watched() -> &'static std::sync::Mutex<Watched> {
     WATCHED.get_or_init(Default::default)
 }
 
+/// The cursor setting of widgets that left the watch (locked, or no parts):
+/// put back if the watch changed one in the same instant.
+fn settled() -> &'static std::sync::Mutex<std::collections::HashMap<String, bool>> {
+    static SETTLED: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, bool>>> = std::sync::OnceLock::new();
+    SETTLED.get_or_init(Default::default)
+}
+
 /// Start the pointer watch if it isn't running; it ends once no widget needs it.
 fn watch_widgets() {
     static RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -215,24 +227,48 @@ fn watch_widgets() {
     }
     std::thread::spawn(|| loop {
         let pointer = cursor_position();
-        {
-            let mut watched = watched().lock().unwrap_or_else(|p| p.into_inner());
+        // What to look at, copied out: a window's position and its cursor
+        // setting go through the main thread, and the main thread takes this
+        // lock to change a widget (closing the dock hid and relocked them),
+        // so asking it while holding the lock froze the meter.
+        let snapshot: Vec<(String, tauri::WebviewWindow, Vec<(i32, i32, i32, i32)>, Option<bool>)> = {
+            let watched = watched().lock().unwrap_or_else(|p| p.into_inner());
             if watched.is_empty() {
                 RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
                 return;
             }
-            watched.retain(|_, (window, parts, through)| {
-                let Ok(origin) = window.inner_position() else { return false };
-                let over = pointer.is_some_and(|(px, py)| {
-                    let (x, y) = (px - origin.x, py - origin.y);
-                    parts.iter().any(|&(l, t, r, b)| x >= l && x < r && y >= t && y < b)
-                });
-                if *through != Some(!over) {
-                    *through = Some(!over);
-                    let _ = window.set_ignore_cursor_events(!over);
-                }
-                true
+            watched.iter().map(|(label, (window, parts, through))| (label.clone(), window.clone(), parts.clone(), *through)).collect()
+        };
+        for (label, window, parts, through) in snapshot {
+            let Ok(origin) = window.inner_position() else {
+                watched().lock().unwrap_or_else(|p| p.into_inner()).remove(&label);
+                continue;
+            };
+            let over = pointer.is_some_and(|(px, py)| {
+                let (x, y) = (px - origin.x, py - origin.y);
+                parts.iter().any(|&(l, t, r, b)| x >= l && x < r && y >= t && y < b)
             });
+            if through == Some(!over) || !watched().lock().unwrap_or_else(|p| p.into_inner()).contains_key(&label) {
+                continue;
+            }
+            let _ = window.set_ignore_cursor_events(!over);
+            // Noted if the widget is still watched with the same parts; if it
+            // left the watch meanwhile, its own setting goes back.
+            let left = {
+                let mut watched = watched().lock().unwrap_or_else(|p| p.into_inner());
+                match watched.get_mut(&label) {
+                    Some(entry) => {
+                        if entry.1 == parts {
+                            entry.2 = Some(!over);
+                        }
+                        None
+                    }
+                    None => settled().lock().unwrap_or_else(|p| p.into_inner()).get(&label).copied(),
+                }
+            };
+            if let Some(ignore) = left {
+                let _ = window.set_ignore_cursor_events(ignore);
+            }
         }
         std::thread::sleep(std::time::Duration::from_millis(40));
     });
