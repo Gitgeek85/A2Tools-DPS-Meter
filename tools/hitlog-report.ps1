@@ -66,11 +66,17 @@ function Get-NpcName([int]$code, [string]$kind) {
     "NPC $code"
 }
 
-$hits = Get-Content $Path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json }
+$all = @(Get-Content $Path | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
 if ($LastMinutes -gt 0) {
     $cut = [DateTimeOffset]::UtcNow.AddMinutes(-$LastMinutes).ToUnixTimeMilliseconds()
-    $hits = $hits | Where-Object { $_.ts -ge $cut }
+    $all = @($all | Where-Object { $_.ts -ge $cut })
 }
+# Older lines have no "kind": they are hits.
+$hits   = @($all | Where-Object { -not $_.kind -or $_.kind -eq 'hit' })
+$events = @($all | Where-Object { $_.kind -in 'heal', 'hot', 'mp' })
+$stats  = @($all | Where-Object { $_.kind -eq 'stats' })
+# You = the actor of your outgoing hits.
+$me = ($hits | Where-Object dir -eq 'out' | Group-Object actor | Sort-Object Count -Descending | Select-Object -First 1).Name
 if ($Target -ne 'all') { $hits = $hits | Where-Object { $_.other -eq $Target } }
 
 Write-Host ""
@@ -167,11 +173,79 @@ if ($in.Count) {
 }
 
 # ---------- 3. Player hits (PvP / heals) - just counted for now ----------
-$pvp = @($hits | Where-Object other -eq 'player')
-if ($pvp.Count) {
-    Write-Host ("Player-to-player lines (PvP or heals, not analysed yet): {0} out, {1} in" -f
-        @($pvp | Where-Object dir -eq 'out').Count, @($pvp | Where-Object dir -eq 'in').Count) -ForegroundColor DarkGray
+# ---------- 3. Healing received ----------
+Write-Host ""
+Write-Host "=== HEALING RECEIVED ===" -ForegroundColor Yellow
+$healRows = [System.Collections.Generic.List[object]]::new()
+foreach ($e in ($events | Where-Object { $_.kind -in 'heal', 'hot' -and [string]$_.target -eq $me })) {
+    $src = if ([string]$e.actor -eq $me) { 'You' } else { 'Party' }
+    $healRows.Add([pscustomobject]@{ From = $src; Skill = (Get-SkillName $e.skill); Type = $e.kind.ToUpper(); Amount = [int64]$e.amount })
 }
+# Party heals the meter files as player-on-player "hits"
+foreach ($h in ($hits | Where-Object { $_.dir -eq 'in' -and $_.other -eq 'player' -and $_.friendly })) {
+    $healRows.Add([pscustomobject]@{ From = 'Party'; Skill = (Get-SkillName $h.skill); Type = 'HEAL'; Amount = [int64]$h.total })
+}
+# Life steal on your own hits
+$steal = @($hits | Where-Object { $_.dir -eq 'out' -and $_.heal -gt 0 })
+foreach ($h in $steal) {
+    $healRows.Add([pscustomobject]@{ From = 'You'; Skill = (Get-SkillName $h.skill) + ' (life steal)'; Type = 'STEAL'; Amount = [int64]$h.heal })
+}
+if ($healRows.Count) {
+    $ht = ($healRows | Measure-Object Amount -Sum).Sum
+    Write-Host ("  Total healed {0:N0} from {1} ticks" -f $ht, $healRows.Count)
+    $healRows | Group-Object From, Skill, Type | ForEach-Object {
+        $m = $_.Group | Measure-Object Amount -Sum -Average -Maximum
+        [pscustomobject]@{
+            From = $_.Group[0].From; Skill = $_.Group[0].Skill; Type = $_.Group[0].Type
+            Ticks = $_.Count; Total = [int64]$m.Sum; Share = '{0:N1}%' -f (100 * $m.Sum / $ht)
+            Avg = [int][math]::Round($m.Average); Max = [int]$m.Maximum
+        }
+    } | Sort-Object Total -Descending | Select-Object -First 20 | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+} else { Write-Host "  (no heals on you in this log - new builds of the meter log these)" }
+
+# ---------- 4. MP and other resources ----------
+Write-Host "=== MP / RESOURCE RESTORES ===" -ForegroundColor Yellow
+$mp = @($events | Where-Object { $_.kind -eq 'mp' -and [string]$_.target -eq $me })
+if ($mp.Count) {
+    $mp | Group-Object skill | ForEach-Object {
+        $m = $_.Group | Measure-Object amount -Sum -Average -Maximum
+        [pscustomobject]@{ Skill = (Get-SkillName ([int]$_.Name)); Ticks = $_.Count; Total = [int64]$m.Sum; Avg = [int][math]::Round($m.Average); Max = [int]$m.Maximum }
+    } | Sort-Object Total -Descending | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+} else { Write-Host "  (no MP restore records on you yet)" }
+
+# ---------- 5. Stat sheet (raw) - to find which ids are HP / MP ----------
+if ($stats.Count) {
+    Write-Host "=== STAT RECORDS (raw ids - for mapping HP/MP etc.) ===" -ForegroundColor Yellow
+    $flat = foreach ($st in $stats) { foreach ($v in $st.values) { [pscustomobject]@{ Id = [int]$v[0]; Val = [int64]$v[1]; Ts = $st.ts } } }
+    $flat | Group-Object Id | ForEach-Object {
+        $m = $_.Group | Measure-Object Val -Minimum -Maximum
+        [pscustomobject]@{ StatId = [int]$_.Name; Updates = $_.Count; Min = $m.Minimum; Max = $m.Maximum; Last = ($_.Group | Sort-Object Ts | Select-Object -Last 1).Val }
+    } | Sort-Object { -$_.Updates } | Select-Object -First 30 | Format-Table -AutoSize | Out-String -Width 200 | Write-Host
+    Write-Host "  Ids that change often with Min..Max like your HP/MP bar are the ones to map." -ForegroundColor DarkGray
+}
+
+# ---------- 6. Cooldowns (observed from your casts) ----------
+Write-Host "=== SKILL CAST GAPS (observed cooldowns) ===" -ForegroundColor Yellow
+Write-Host "  A cast = hits of one skill less than 1.5 s apart. Shortest gap ~ the cooldown; long average = held or forgotten." -ForegroundColor DarkGray
+$cd = foreach ($g in ($hits | Where-Object { $_.dir -eq 'out' -and -not $_.dot } | Group-Object { Get-SkillName $_.skill })) {
+    $ts = @($g.Group | Sort-Object ts | ForEach-Object { [int64]$_.ts })
+    $casts = [System.Collections.Generic.List[int64]]::new()
+    foreach ($t in $ts) { if ($casts.Count -eq 0 -or $t - $casts[$casts.Count - 1] -gt 1500) { $casts.Add($t) } else { $casts[$casts.Count - 1] = $t } }
+    if ($casts.Count -lt 3) { continue }
+    $gaps = for ($i = 1; $i -lt $casts.Count; $i++) { ($casts[$i] - $casts[$i - 1]) / 1000.0 }
+    $gaps = @($gaps | Where-Object { $_ -lt 120 })   # ignore gaps between fights
+    if ($gaps.Count -lt 2) { continue }
+    [pscustomobject]@{
+        Skill = $g.Name; Casts = $casts.Count
+        'MinGap(s)' = [math]::Round(($gaps | Measure-Object -Minimum).Minimum, 1)
+        'MedianGap(s)' = [math]::Round((Get-Median ([double[]]$gaps)), 1)
+        'AvgGap(s)' = [math]::Round(($gaps | Measure-Object -Average).Average, 1)
+    }
+}
+if ($cd) { $cd | Sort-Object 'MinGap(s)' -Descending | Format-Table -AutoSize | Out-String -Width 200 | Write-Host }
+
+$pvp = @($hits | Where-Object { $_.other -eq 'player' -and -not $_.friendly -and $_.dir -eq 'out' })
+if ($pvp.Count) { Write-Host ("PvP hits logged (not analysed yet): {0}" -f $pvp.Count) -ForegroundColor DarkGray }
 
 if ($Csv) {
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
