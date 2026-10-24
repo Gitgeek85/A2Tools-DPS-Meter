@@ -213,7 +213,7 @@ pub fn hp_request(server_id: u16, bosses: &[BossHp]) -> Option<serde_json::Value
 /// Learnt only from the game's own word (`own_server`), never from a guess.
 /// What it finds also goes to the fight records (`note_host_server`), so a
 /// fight then is saved, and its log filed, under that server too.
-fn report_server(state: &AppState) -> u16 {
+pub(crate) fn report_server(state: &AppState) -> u16 {
     let own = state.data_storage.own_server();
     // Only a real game server's address names a server. Through a ping
     // reducer (ExitLag and the like) the game talks to a tunnel on this PC
@@ -270,8 +270,16 @@ fn spawn_events(app: tauri::AppHandle) {
                         .header(reqwest::header::CONTENT_TYPE, "application/json")
                         .body(body.to_string())
                         .timeout(Duration::from_secs(10));
-                    if let Err(e) = request.send().await {
-                        tracing::debug!("Boss timers: could not send HP ({path}): {e}");
+                    match request.send().await {
+                        // Refused: said, as nothing else would show it (an HP
+                        // bar that stayed full on Blooming Korin, 2026-10-22).
+                        Ok(res) if !res.status().is_success() => {
+                            let status = res.status();
+                            let why = res.text().await.unwrap_or_default();
+                            tracing::info!("Boss timers: HP refused ({path}, {status}): {}", why.chars().take(200).collect::<String>());
+                        }
+                        Ok(_) => {}
+                        Err(e) => tracing::debug!("Boss timers: could not send HP ({path}): {e}"),
                     }
                 }
             }

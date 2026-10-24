@@ -399,11 +399,16 @@
       }
     },
 
-    // The live fight's buffs and debuffs on a target: { targetId, startTimeMs,
-    // durationMs, buffs }, or null.
+    // The live fight's buffs and debuffs on a target, and the stagger windows
+    // of every target Details shows with it: { targetId, startTimeMs,
+    // durationMs, buffs, stagger }, or null.
     async getFightBuffs(targetId) {
       try {
-        return await invoke("get_fight_buffs", { targetId: Number(targetId) });
+        // The targets Details shows together, as getBattleDetail reads them.
+        const dps = cachedDpsJson ? JSON.parse(cachedDpsJson) : null;
+        const targetIds = [...new Set((Array.isArray(dps?.detailTargetIds)
+          ? dps.detailTargetIds : [dps?.targetId]).map(Number).filter((id) => id > 0))];
+        return await invoke("get_fight_buffs", { targetId: Number(targetId), targetIds });
       } catch (e) {
         console.error("[A2Tools] getFightBuffs error:", e);
         return null;
@@ -782,6 +787,14 @@
     // backend can keep the lock button clickable here.
     overlayLockSupported() {
       return invoke("overlay_lock_supported").catch(() => false);
+    },
+    // The pointer in this window, in CSS pixels, or null where it can't be
+    // read (a native Wayland window).
+    async pointerInWindow() {
+      const at = await invoke("pointer_in_window").catch(() => null);
+      if (!Array.isArray(at)) return null;
+      const scale = window.devicePixelRatio || 1;
+      return { x: at[0] / scale, y: at[1] / scale };
     },
     setOverlayLocked(locked) {
       invoke("set_overlay_locked", { locked: !!locked }).catch(() => {});

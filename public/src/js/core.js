@@ -11,6 +11,11 @@ const SETTING_CHOICES = {
   // The number after the level in the Discord activity (presence.rs).
   discordStat: { allowed: ["combatPower", "gearScore", "off"], fallback: "off" },
   // A pattern over the meter's bars: a supporter's perk (applyBarTexture).
+  // The Settings window's own colours (styles.css, data-settings-theme):
+  // "meter" keeps the meter theme's accent.
+  settingsTheme: { allowed: ["meter", "midnight", "graphite", "violet", "forest", "crimson", "ocean", "sapphire", "indigo", "rose", "sunset", "amber", "copper", "lime", "ice", "slate", "onyx"], fallback: "meter" },
+  // The meter's font (styles.css, data-font): "meter" is its own (#98).
+  font: { allowed: ["meter", "system", "inter", "exo2", "oxanium", "jetbrains", "atkinson", "lexend", "andika"], fallback: "meter" },
   barTexture: { allowed: ["none", "flames", "crystal", "glacier", "feathers", "wing", "storm", "nebula", "galaxy", "aura"], fallback: "none" },
 };
 // Themes whose bars differ from one another show those colours in the theme
@@ -44,6 +49,7 @@ const REMOTE_APPLIED_SETTING_CONTROLS = {
   "dpsMeter.showOdyle": ".showOdyleCheckbox",
   "dpsMeter.showTtk": ".showTtkCheckbox",
   "dpsMeter.showHealModes": ".showHealModesCheckbox",
+  "dpsMeter.showStaggerMode": ".showStaggerModeCheckbox",
   "dpsMeter.bossNameSize": ".bossNameSizeInput",
   "dpsMeter.showSupporterColors": ".showSupporterColorsCheckbox",
   "dpsMeter.barTextureOffset": ".textureOffsetCheckbox",
@@ -97,6 +103,7 @@ class DpsApp {
       language: "dpsMeter.language",
       debugLogging: "dpsMeter.debugLoggingEnabled",
       shareBossTimers: "dpsMeter.shareBossTimers",
+      shareSupplyRequests: "dpsMeter.shareSupplyRequests",
       pinMeToTop: "dpsMeter.pinMeToTop",
       mainPlayerNamesBold: "dpsMeter.mainPlayerNamesBold",
       showSupporterColors: "dpsMeter.showSupporterColors",
@@ -106,6 +113,7 @@ class DpsApp {
       odyleLast: "dpsMeter.odyleLast",
       showTtk: "dpsMeter.showTtk",
       showHealModes: "dpsMeter.showHealModes",
+      showStaggerMode: "dpsMeter.showStaggerMode",
       showTotalDps: "dpsMeter.showTotalDps",
       roundDps: "dpsMeter.roundDps",
       autoDetectDevice: "dpsMeter.autoDetectDevice",
@@ -114,8 +122,11 @@ class DpsApp {
       playerLimit: "dpsMeter.playerLimit",
       theme: "dpsMeter.theme",
       slimMode: "dpsMeter.slimMode",
+      settingsTheme: "dpsMeter.settingsTheme",
+      font: "dpsMeter.font",
       autoHideMeter: "dpsMeter.autoHideMeter",
       hideWhenGameClosed: "dpsMeter.hideWhenGameClosed",
+      hideWhenSolo: "dpsMeter.hideWhenSolo",
       globalHotkeys: "dpsMeter.globalHotkeys",
       bossLogs: "dpsMeter.bossLogsEnabled",
       saveRawPackets: "dpsMeter.saveRawPackets",
@@ -251,6 +262,7 @@ class DpsApp {
     this.hoverTooltipPositionRaf = 0;
     this.hoverTooltipGeometryKey = "";
     this.hoverTooltipDismissed = true;
+    this.hoverPointerWatch = 0;
 
     DpsApp.instance = this;
   }
@@ -327,6 +339,7 @@ class DpsApp {
       this.showOdyle = this.safeGetSetting(this.storageKeys.showOdyle) === "true";
       this.showTtk = this.safeGetSetting(this.storageKeys.showTtk) !== "false";
       this.showHealModes = this.safeGetSetting(this.storageKeys.showHealModes) !== "false";
+      this.showStaggerMode = this.safeGetSetting(this.storageKeys.showStaggerMode) === "true";
       this.showTotalDps = this.safeGetSetting(this.storageKeys.showTotalDps) !== "false";
       this.roundDps = this.safeGetSetting(this.storageKeys.roundDps) !== "false";
       this.showDpsSuffix = this.safeGetSetting(this.storageKeys.showDpsSuffix) !== "false";
@@ -358,6 +371,7 @@ class DpsApp {
 
     this.resetBtn = document.querySelector(".resetBtn");
     this.suspendBtn = document.querySelector(".suspendBtn");
+    this.updatesBtn = document.querySelector(".updatesBtn");
     this.lockBtn = document.querySelector(".lockBtn");
     this.headerBtns = document.querySelector(".headerBtns");
     this.targetModeBtn = document.querySelector(".footerBtns .targetModeBtn");
@@ -486,6 +500,8 @@ class DpsApp {
     this.showTtk = this.safeGetSetting(this.storageKeys.showTtk) !== "false";
     // HPS and total heal in the DPS/DMG button's cycle; on unless turned off.
     this.showHealModes = this.safeGetSetting(this.storageKeys.showHealModes) !== "false";
+    // Stagger in the same cycle, after healing; off unless turned on.
+    this.showStaggerMode = this.safeGetSetting(this.storageKeys.showStaggerMode) === "true";
     this.ttk = typeof createTtkEstimator === "function" ? createTtkEstimator() : null;
     // Ping is pushed immediately from PingTracker via window._dpsApp.updatePing().
     // A slow fallback poll handles edge cases (e.g. push not wired yet on startup).
@@ -633,7 +649,7 @@ class DpsApp {
     // Not in the private build, which checks for nothing (build_features).
     if (window.A2_VIEW === "main") {
       Promise.resolve(window.a2BuildReady).then((build) => {
-        if (build?.online !== false) window.ReleaseChecker?.start?.();
+        if (build?.online !== false) this.setupUpdatesButton();
       });
     }
     this.setupConsoleDebugging();
@@ -668,6 +684,63 @@ class DpsApp {
       this.startWindowTitlePolling();
       this.fetchDps();
     }
+  }
+
+  // The green button in the title: shown while a meter update or plugin
+  // updates are waiting, in place of a window popping up over the game at
+  // start. A click asks about each, as those windows did.
+  setupUpdatesButton() {
+    const btn = this.updatesBtn;
+    if (!btn) return;
+    const invoke = window.__TAURI__?.core?.invoke;
+    const found = { meter: null, plugins: [] };
+    const render = () => {
+      const lines = [];
+      if (found.meter) {
+        lines.push(window.i18n?.format?.("header.updates.meter", { version: found.meter }, `A2Tools DPS Meter ${found.meter} is available`)
+          ?? `A2Tools DPS Meter ${found.meter} is available`);
+      }
+      if (found.plugins.length) {
+        const list = found.plugins.map((u) => `${u.name} ${u.to}`).join(", ");
+        lines.push(window.i18n?.format?.("header.updates.plugins", { list }, `Plugin updates: ${list}`)
+          ?? `Plugin updates: ${list}`);
+      }
+      btn.hidden = !lines.length;
+      const tip = lines.join("\n");
+      btn.title = tip;
+      btn.setAttribute("aria-label", tip);
+    };
+    window.ReleaseChecker?.start?.((latest) => {
+      found.meter = latest;
+      render();
+    });
+    const takePlugins = (list) => {
+      found.plugins = Array.isArray(list) ? list : [];
+      render();
+    };
+    window.__TAURI__?.event?.listen?.("plugin-updates", (e) => takePlugins(e.payload));
+    invoke?.("plugin_pending_updates").then(takePlugins).catch(() => {});
+    this.i18n?.onChange?.(render);
+    let busy = false;
+    btn.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        if (found.meter) {
+          // Installing closes the meter; declined, the button stays.
+          if (await window.ReleaseChecker?.offer?.()) found.meter = null;
+        }
+        if (found.plugins.length) {
+          await invoke?.("plugin_offer_updates");
+          found.plugins = [];
+        }
+      } catch (e) {
+        console.error("[A2Tools] Update offer failed:", e);
+      } finally {
+        busy = false;
+        render();
+      }
+    });
   }
 
   bindNativeHotkeyBridge() {
@@ -901,6 +974,10 @@ class DpsApp {
 
   hideHoverTooltip() {
     this.hoverTooltipDismissed = true;
+    if (this.hoverPointerWatch) {
+      clearInterval(this.hoverPointerWatch);
+      this.hoverPointerWatch = 0;
+    }
     if (this.hoverTooltipPositionRaf) {
       cancelAnimationFrame(this.hoverTooltipPositionRaf);
       this.hoverTooltipPositionRaf = 0;
@@ -978,6 +1055,20 @@ class DpsApp {
     return this.jobColorMap[String(job || "")] || "";
   }
 
+  /** A row's stagger by skill, most first, as the hover tooltip lists skills. */
+  staggerTooltipDetails(row) {
+    // The codes are the ones skills are shown by (normalize_skill_id).
+    const name = (code) => this.i18n?.getSkillName?.(code, "")
+      || (code ? `#${code}` : this.i18n?.t?.("details.stagger.unknownSkill", "Unknown skill") ?? "Unknown skill");
+    const skills = Object.entries(row?.staggerSkills || {})
+      .map(([code, value]) => ({ code: Number(code), value: Number(value) || 0 }))
+      .filter((s) => s.value > 0)
+      .sort((a, b) => b.value - a.value || a.code - b.code)
+      .slice(0, 5)
+      .map((s) => ({ name: name(s.code), code: s.code, dmg: s.value, job: row?.job }));
+    return { skills, state: "empty", mode: "stagger" };
+  }
+
   renderHoverTooltip(details, row, rowEl) {
     if (!this.hoverTooltipEl || !rowEl) return;
     const skills = Array.isArray(details?.skills) ? details.skills.slice(0, 5) : [];
@@ -987,7 +1078,9 @@ class DpsApp {
       empty: "No skill data for this fight",
       error: "Could not load skills",
     }[tooltipState] || "No skill data for this fight";
-    const stateText = this.i18n?.t(`details.hoverTooltip.${tooltipState}`, stateFallback) ?? stateFallback;
+    const stateText = details?.mode === "stagger"
+      ? this.i18n?.t("details.stagger.none", "No stagger gauge was worn down in this fight.") ?? "No stagger gauge was worn down in this fight."
+      : this.i18n?.t(`details.hoverTooltip.${tooltipState}`, stateFallback) ?? stateFallback;
     const dps = Number(row?.dps) || 0;
     const dpsText = `${this.dpsFormatter.format(dps)}${this.i18n?.t("meter.dpsSuffix", "/s") ?? "/s"}`;
     const totalDamage = Number(row?.totalDamage) || 0;
@@ -1011,11 +1104,15 @@ class DpsApp {
     const tooltipNameHtml = row?.isSupporter
       ? `<span class="isSupporter">${tooltipName}</span>`
       : tooltipName;
+    const statsHtml = details?.mode === "stagger"
+      ? `<span>${this.i18n?.t("details.stagger.title", "Stagger") ?? "Stagger"}: ${Number(row?.stagger) || 0}</span>
+        <span>${this.i18n?.t("details.stats.totalDamage", "Total Damage") ?? "Total Damage"}: ${totalDamageText}</span>`
+      : `<span>${this.i18n?.t("header.display.dps", "DPS") ?? "DPS"}: ${dpsText}</span>
+        <span>${this.i18n?.t("details.stats.totalDamage", "Total Damage") ?? "Total Damage"}: ${totalDamageText}</span>`;
     this.hoverTooltipEl.innerHTML = `
       <div class="hoverDetailsTooltipHeader">${tooltipClassIcon}${tooltipNameHtml}</div>
       <div class="hoverDetailsTooltipStats">
-        <span>${this.i18n?.t("header.display.dps", "DPS") ?? "DPS"}: ${dpsText}</span>
-        <span>${this.i18n?.t("details.stats.totalDamage", "Total Damage") ?? "Total Damage"}: ${totalDamageText}</span>
+        ${statsHtml}
       </div>
       <div class="hoverDetailsTooltipSkills">${skillsHtml || `<div class="hoverDetailsTooltipSkill muted">${stateText}</div>`}</div>
     `;
@@ -1029,6 +1126,66 @@ class DpsApp {
     this.hoverTooltipEl.classList.add("isVisible");
     this.hoverTooltipEl.setAttribute("aria-hidden", "false");
     this.scheduleHoverTooltipPosition();
+    this.watchHoverPointer();
+  }
+
+  // A row can miss its mouse-leave: the game takes the pointer while it is
+  // over the meter, or the window stops taking the mouse under it. The
+  // tooltip then stayed up until the row was hovered and left again. While
+  // it shows, ask where the pointer really is and close it once it is off
+  // the row. On Linux that isn't enough: a native Wayland window can't read
+  // the pointer, and under XWayland the pointer read is the last one X saw
+  // in the meter while it is over the game or a Wayland window, so still on
+  // the row (Hirai, KDE, stuck through both fixes, 2026-10-24). There the
+  // tooltip also closes when the pointer leaves the window, and after 4 s
+  // with no pointer movement over the meter (the game holding the pointer
+  // sends the meter nothing).
+  watchHoverPointer() {
+    if (this.hoverPointerWatch || !window.javaBridge?.pointerInWindow) return;
+    if (document.documentElement?.classList?.contains?.("linux")) this.hoverIdleOnly = true;
+    this.watchHoverIdle();
+    this.hoverPointerWatch = setInterval(async () => {
+      const rowId = this.hoveredDetailsRowId;
+      const at = await window.javaBridge.pointerInWindow();
+      if (!this.hoverPointerWatch) return;
+      if (!at) {
+        clearInterval(this.hoverPointerWatch);
+        this.hoverPointerWatch = 0;
+        this.hoverIdleOnly = true;
+        return;
+      }
+      // Hovering moved on while asking: the next check sees the new row.
+      if (rowId !== this.hoveredDetailsRowId) return;
+      const over = document.elementFromPoint(at.x, at.y)?.closest?.(".item");
+      if (rowId && Number(over?.dataset?.rowId) === rowId) return;
+      this.hoveredDetailsRowId = null;
+      this.hideHoverTooltip();
+    }, 300);
+  }
+
+  // The fallback where the pointer can't be trusted (see watchHoverPointer):
+  // set up once; it acts on Linux, or once the pointer check found it
+  // unreadable.
+  watchHoverIdle() {
+    if (this.hoverIdleWatch) return;
+    this.lastPointerMoveAt = Date.now();
+    const moved = () => { this.lastPointerMoveAt = Date.now(); };
+    document.addEventListener("mousemove", moved, { passive: true });
+    document.documentElement?.addEventListener?.("mouseleave", () => {
+      if (this.hoverIdleOnly) {
+        this.hoveredDetailsRowId = null;
+        this.hideHoverTooltip();
+      }
+    });
+    this.hoverIdleWatch = setInterval(() => {
+      // By the tooltip being up, not by a hovered row: on Wayland the page can
+      // keep a row :hover after the pointer has gone, and leaving it then
+      // cleared the row but kept the tooltip (Hirai, KDE Wayland).
+      if (!this.hoverIdleOnly || !this.hoverTooltipEl?.classList.contains("isVisible")) return;
+      if (Date.now() - this.lastPointerMoveAt < 4000) return;
+      this.hoveredDetailsRowId = null;
+      this.hideHoverTooltip();
+    }, 500);
   }
 
   positionHoverTooltip(rowEl = null) {
@@ -1098,6 +1255,11 @@ class DpsApp {
     if (!Number.isFinite(rowId) || rowId <= 0) return;
     const rowEl = this.elList?.querySelector?.(`.item[data-row-id="${rowId}"]`);
     if (!rowEl) return;
+    // Stagger mode: the row carries its stagger by skill, nothing to ask for.
+    if (this.displayMode === "stagger") {
+      this.renderHoverTooltip(this.staggerTooltipDetails(row), row, rowEl);
+      return;
+    }
 
     const snapshot = this.getHoverTooltipSnapshot();
     const stored = this.hoverTooltipCacheByRowId.get(rowId);
@@ -1582,6 +1744,11 @@ class DpsApp {
       const totalDamage = Math.trunc(Number(isObj ? value.amount : 0)) || 0;
       const hps = Math.trunc(Number(isObj ? value.hps : 0)) || 0;
       const healAmount = Math.trunc(Number(isObj ? value.healAmount : 0)) || 0;
+      // Stagger taken off the target's gauge in the fight (combat/stagger.rs).
+      const stagger = Math.trunc(Number(isObj ? value.stagger : 0)) || 0;
+      // The same by skill code, for the tooltip in Stagger mode.
+      const staggerSkills = isObj && value.staggerSkills && typeof value.staggerSkills === "object"
+        ? value.staggerSkills : {};
 
       // 소수점 한자리
       const contribRaw = isObj ? Number(value.damageContribution) : NaN;
@@ -1606,6 +1773,8 @@ class DpsApp {
         totalDamage,
         hps,
         healAmount,
+        stagger,
+        staggerSkills,
         damageContribution,
         combatPower,
         gearScore,
@@ -1732,6 +1901,12 @@ class DpsApp {
         if (next) show(next.dataset.section, { focus: true });
       });
     }
+    // Opened on one section (the plugin dock's Settings button), or told to
+    // switch to it while open.
+    const known = (key) => typeof key === "string" && items.some((item) => item.dataset.section === key);
+    const invoke = window.__TAURI__?.core?.invoke;
+    invoke?.("take_settings_section").then((key) => { if (known(key)) show(key); }).catch(() => {});
+    window.__TAURI__?.event?.listen?.("settings-section", (event) => { if (known(event.payload)) show(event.payload); });
   }
 
   normalizeBarGap(value) {
@@ -2436,11 +2611,9 @@ class DpsApp {
       }
     });
     this.metricToggleBtn?.addEventListener("click", () => {
-      // DPS -> total damage -> both (-> HPS -> total heal, unless turned
-      // off in Settings) -> DPS.
-      const order = this.showHealModes === false
-        ? ["dps", "totalDamage", "both"]
-        : ["dps", "totalDamage", "both", "hps", "totalHeal"];
+      // DPS -> total damage -> both (-> HPS -> total heal) (-> stagger),
+      // each unless turned off in Settings, -> DPS.
+      const order = ["dps", ...this.displayModes()];
       const nextMode = order[(order.indexOf(this.displayMode) + 1) % order.length];
       this.setDisplayMode(nextMode, { persist: true });
       this.renderCurrentRows();
@@ -2602,6 +2775,7 @@ class DpsApp {
     this.bossLogsCheckbox = document.querySelector(".bossLogsCheckbox");
     this.debugLoggingCheckbox = document.querySelector(".debugLoggingCheckbox");
     this.shareBossTimersCheckbox = document.querySelector(".shareBossTimersCheckbox");
+    this.shareSupplyRequestsCheckbox = document.querySelector(".shareSupplyRequestsCheckbox");
     this.partyPresenceCheckbox = document.querySelector(".partyPresenceCheckbox");
     this.showPingCheckbox = document.querySelector(".showPingCheckbox");
     this.showOdyleCheckbox = document.querySelector(".showOdyleCheckbox");
@@ -2653,9 +2827,15 @@ class DpsApp {
     this.languageDropdownMenu = document.querySelector(".languageDropdownMenu");
     this.themeDropdownBtn = document.querySelector(".themeDropdownBtn");
     this.themeDropdownMenu = document.querySelector(".themeDropdownMenu");
+    this.settingsThemeDropdownBtn = document.querySelector(".settingsThemeDropdownBtn");
+    this.settingsThemeDropdownMenu = document.querySelector(".settingsThemeDropdownMenu");
+    this.fontDropdownBtn = document.querySelector(".fontDropdownBtn");
+    this.fontDropdownMenu = document.querySelector(".fontDropdownMenu");
     this.settingsSelections = {
       language: "en",
       theme: this.theme,
+      settingsTheme: "meter",
+      font: "meter",
       defaultMeterMode: "bossTargets",
       allTargetsWindowMs: "120000",
       trainSelectionMode: "all",
@@ -2724,6 +2904,8 @@ class DpsApp {
       reason: "default meter mode setting",
     });
     this.applyTheme(storedTheme || this.theme, { persist: false });
+    this.applySettingsTheme(this.safeGetSetting(this.storageKeys.settingsTheme));
+    this.applyFont(this.safeGetSetting(this.storageKeys.font));
     if (storedLanguage && storedLanguage !== this.i18n?.getLanguage?.()) {
       this.i18n?.setLanguage?.(storedLanguage, { persist: false });
     }
@@ -2847,6 +3029,15 @@ class DpsApp {
         this.safeSetSetting(this.storageKeys.shareBossTimers, event.target?.checked ? "true" : "false");
       });
     }
+    // The Supply Requests boards, shared with Profiteer (supply_report.rs):
+    // on unless turned off.
+    if (this.shareSupplyRequestsCheckbox) {
+      // Off unless turned on.
+      this.shareSupplyRequestsCheckbox.checked = this.safeGetSetting(this.storageKeys.shareSupplyRequests) === "true";
+      this.shareSupplyRequestsCheckbox.addEventListener("change", (event) => {
+        this.safeSetSetting(this.storageKeys.shareSupplyRequests, event.target?.checked ? "true" : "false");
+      });
+    }
     if (this.debugLoggingCheckbox) {
       this.debugLoggingCheckbox.checked = this.debugLoggingEnabled;
       this.debugLoggingCheckbox.addEventListener("change", (event) => {
@@ -2886,6 +3077,19 @@ class DpsApp {
         this.safeSetSetting(this.storageKeys.showHealModes, String(this.showHealModes));
         // Turned off while showing healing: back to DPS.
         if (!this.showHealModes && (this.displayMode === "hps" || this.displayMode === "totalHeal")) {
+          this.setDisplayMode("dps", { persist: true });
+          this.renderCurrentRows?.();
+        }
+      });
+    }
+    this.showStaggerModeCheckbox = document.querySelector(".showStaggerModeCheckbox");
+    if (this.showStaggerModeCheckbox) {
+      this.showStaggerModeCheckbox.checked = this.showStaggerMode;
+      this.showStaggerModeCheckbox.addEventListener("change", (event) => {
+        this.showStaggerMode = !!event.target?.checked;
+        this.safeSetSetting(this.storageKeys.showStaggerMode, String(this.showStaggerMode));
+        // Turned off while showing stagger: back to DPS.
+        if (!this.showStaggerMode && this.displayMode === "stagger") {
           this.setDisplayMode("dps", { persist: true });
           this.renderCurrentRows?.();
         }
@@ -2994,6 +3198,14 @@ class DpsApp {
       this.hideWhenGameClosedCheckbox.checked = this.safeGetSetting(this.storageKeys.hideWhenGameClosed) === "true";
       this.hideWhenGameClosedCheckbox.addEventListener("change", (event) => {
         this.safeSetSetting(this.storageKeys.hideWhenGameClosed, String(!!event.target?.checked));
+      });
+    }
+    // And while not in a party (the same loop).
+    this.hideWhenSoloCheckbox = document.querySelector(".hideWhenSoloCheckbox");
+    if (this.hideWhenSoloCheckbox) {
+      this.hideWhenSoloCheckbox.checked = this.safeGetSetting(this.storageKeys.hideWhenSolo) === "true";
+      this.hideWhenSoloCheckbox.addEventListener("change", (event) => {
+        this.safeSetSetting(this.storageKeys.hideWhenSolo, String(!!event.target?.checked));
       });
     }
     // Suspend button setting
@@ -3642,7 +3854,35 @@ class DpsApp {
         const wasOpen = menu.classList.contains("isOpen");
         closeAll();
         menu.classList.toggle("isOpen", !wasOpen);
+        if (!wasOpen) fitMenu(menu);
       };
+    };
+
+    // An open menu is placed over everything, the Appearance preview
+    // included, rather than inside the scrolling pane, which cut it off (a
+    // long one, the colour themes, had to end at the preview and scroll).
+    // Fixed, under its button, or above it when there is more room there;
+    // it scrolls only past the window's edge. The rects are in screen pixels
+    // and the panel is zoomed, so they are scaled back to the menu's own.
+    const fitMenu = (menu) => {
+      for (const key of ["position", "top", "left", "maxHeight", "overflowY", "minWidth"]) menu.style[key] = "";
+      const button = menu.parentElement?.querySelector(".settingsDropdownBtn");
+      if (!button || !menu.offsetHeight || !button.offsetHeight) return;
+      const r = button.getBoundingClientRect();
+      const scale = r.height / button.offsetHeight || 1;
+      const below = (window.innerHeight - r.bottom - 8) / scale;
+      const above = (r.top - 8) / scale;
+      menu.style.position = "fixed";
+      menu.style.minWidth = `${r.width / scale}px`;
+      const up = menu.offsetHeight > below && above > below;
+      const room = up ? above : below;
+      if (menu.offsetHeight > room) {
+        menu.style.maxHeight = `${Math.max(120, Math.floor(room))}px`;
+        menu.style.overflowY = "auto";
+      }
+      const top = up ? r.top / scale - 4 - menu.offsetHeight : r.bottom / scale + 4;
+      menu.style.top = `${Math.max(4, top)}px`;
+      menu.style.left = `${Math.max(4, r.right / scale - menu.offsetWidth)}px`;
     };
 
     if (!this._settingsDropdownOutsideBound) {
@@ -3651,6 +3891,12 @@ class DpsApp {
           closeAll();
         }
       });
+      // A placed menu stays where it opened: scrolling the pane under it, or
+      // resizing the window, closes it (scrolling the menu itself does not).
+      document.addEventListener("scroll", (event) => {
+        if (!event.target?.closest?.(".settingsDropdownMenu")) closeAll();
+      }, true);
+      window.addEventListener("resize", () => closeAll());
       this._settingsDropdownOutsideBound = true;
     }
 
@@ -3748,6 +3994,62 @@ class DpsApp {
         this.settingsSelections.language = value;
         this.safeSetStorage(this.storageKeys.language, value);
         this.i18n?.setLanguage?.(value, { persist: true });
+      }
+    );
+
+    const settingsThemeOptions = SETTING_CHOICES.settingsTheme.allowed.map((value) => ({
+      value,
+      label: this.i18n?.t(`settings.settingsTheme.options.${value}`, value[0].toUpperCase() + value.slice(1)),
+    }));
+    setupDropdown(
+      this.settingsThemeDropdownBtn,
+      this.settingsThemeDropdownMenu,
+      settingsThemeOptions,
+      this.settingsSelections.settingsTheme,
+      (value) => {
+        if (!value) return;
+        this.applySettingsTheme(value, { persist: true });
+      },
+      {
+        decorateItem: (item, value) => {
+          const swatch = document.createElement("span");
+          swatch.className = "settingsThemeSwatch";
+          swatch.dataset.settingsTheme = value;
+          swatch.setAttribute("aria-hidden", "true");
+          item.prepend(swatch);
+        },
+      }
+    );
+
+    // Each font's name in the font itself, so the menu shows how it reads.
+    const FONT_PREVIEW = {
+      meter: '"Pretendard", "A2 Pretendard", "Segoe UI", sans-serif',
+      system: 'system-ui, "Segoe UI", "Noto Sans", sans-serif',
+      inter: '"A2 Inter", sans-serif',
+      exo2: '"A2 Exo 2", sans-serif',
+      oxanium: '"A2 Oxanium", sans-serif',
+      jetbrains: '"A2 JetBrains Mono", monospace',
+      atkinson: '"A2 Atkinson", sans-serif',
+      lexend: '"A2 Lexend", sans-serif',
+      andika: '"A2 Andika", sans-serif',
+    };
+    const fontOptions = SETTING_CHOICES.font.allowed.map((value) => ({
+      value,
+      label: this.i18n?.t(`settings.font.options.${value}`, value[0].toUpperCase() + value.slice(1)),
+    }));
+    setupDropdown(
+      this.fontDropdownBtn,
+      this.fontDropdownMenu,
+      fontOptions,
+      this.settingsSelections.font,
+      (value) => {
+        if (!value) return;
+        this.applyFont(value, { persist: true });
+      },
+      {
+        decorateItem: (item, value) => {
+          item.style.fontFamily = FONT_PREVIEW[value] || "";
+        },
       }
     );
 
@@ -4865,6 +5167,7 @@ class DpsApp {
       [this.bossLogsCheckbox, "bossLogs", false],
       [this.autoHideMeterCheckbox, "autoHideMeter", false],
       [this.hideWhenGameClosedCheckbox, "hideWhenGameClosed", false],
+      [this.hideWhenSoloCheckbox, "hideWhenSolo", false],
       [this.globalHotkeysCheckbox, "globalHotkeys", !document.documentElement?.classList?.contains?.("linux")],
       [this.saveRawPacketsCheckbox, "saveRawPackets", false],
       [document.querySelector(".discordActivityCheckbox"), "discordActivity", false],
@@ -4891,6 +5194,7 @@ class DpsApp {
     this.setBetaUi(true);
     this.setSlimMode(get("slimMode") === "true");
     this.applyTheme(get("theme") || this.theme);
+    this.applyFont(get("font"));
     const language = get("language");
     if (isSet(language)) this.applyRemoteSettingChange(this.storageKeys.language, language);
     this.settingsSelections.language = this.i18n?.getLanguage?.() || this.settingsSelections.language;
@@ -5159,6 +5463,8 @@ class DpsApp {
     const normalized = this.availableThemes.includes(themeId) ? themeId : this.availableThemes[0];
     this.theme = normalized;
     document.documentElement.dataset.theme = normalized;
+    // The "meter" Settings colours take this theme's accent.
+    this.sharePluginTheme();
     if (this.settingsSelections) {
       this.settingsSelections.theme = normalized;
     }
@@ -5175,9 +5481,70 @@ class DpsApp {
     }
   }
 
+  // The Settings window's colours, apart from the meter's theme.
+  // The font of every meter window (#98): data-font on the page, which
+  // styles.css turns into the font; "meter" keeps the meter's own.
+  applyFont(value, { persist = false } = {}) {
+    const normalized = pickSettingChoice("font", value);
+    const root = document.documentElement;
+    if (root?.dataset) root.dataset.font = normalized;
+    if (this.settingsSelections) this.settingsSelections.font = normalized;
+    this.syncSettingsDropdownSelection(this.fontDropdownBtn, this.fontDropdownMenu, normalized);
+    if (persist) this.safeSetSetting(this.storageKeys.font, normalized);
+  }
+
+  applySettingsTheme(value, { persist = false } = {}) {
+    const normalized = pickSettingChoice("settingsTheme", value);
+    document.documentElement.dataset.settingsTheme = normalized;
+    if (this.settingsSelections) this.settingsSelections.settingsTheme = normalized;
+    this.syncSettingsDropdownSelection(this.settingsThemeDropdownBtn, this.settingsThemeDropdownMenu, normalized);
+    if (persist) this.safeSetSetting(this.storageKeys.settingsTheme, normalized);
+    this.sharePluginTheme();
+  }
+
+  // Plugin windows take the Settings colours (their panel, title bar and
+  // controls): read as this window shows them, as #rrggbb, and handed to the
+  // meter, which keeps them and tells the plugins. Only the Settings window
+  // has them; the meter skips a theme it already has.
+  sharePluginTheme() {
+    const root = document.documentElement;
+    if (!root.classList.contains("settingsWindow")) return;
+    clearTimeout(this._pluginThemeTimer);
+    this._pluginThemeTimer = setTimeout(() => {
+      const hex = (value) => {
+        const probe = document.createElement("span");
+        probe.style.color = value;
+        if (!probe.style.color) return "";
+        probe.style.display = "none";
+        document.body.appendChild(probe);
+        const rgba = getComputedStyle(probe).color.match(/[\d.]+/g) || [];
+        probe.remove();
+        if (rgba.length < 3 || (rgba.length > 3 && Number(rgba[3]) === 0)) return "";
+        return `#${rgba.slice(0, 3).map((n) => Number(n).toString(16).padStart(2, "0")).join("")}`;
+      };
+      const css = getComputedStyle(root);
+      const read = (name) => hex(css.getPropertyValue(name).trim());
+      const bg = read("--settings-bg") || "#0a0e16";
+      const theme = {
+        bg,
+        panel: read("--settings-nav-bg") || bg,
+        accent: read("--settings-accent") || read("--isUser-fill") || "#8fc2ff",
+      };
+      window.__TAURI__?.core?.invoke?.("set_plugin_theme", { theme })?.catch?.(() => {});
+    }, 0);
+  }
+
+  /** The display modes after DPS, in the button's cycle, as Settings allow. */
+  displayModes() {
+    const modes = ["totalDamage", "both"];
+    if (this.showHealModes !== false) modes.push("hps", "totalHeal");
+    // Off unless turned on: checked on only a few bosses so far.
+    if (this.showStaggerMode === true) modes.push("stagger");
+    return modes;
+  }
+
   setDisplayMode(mode, { persist = false } = {}) {
-    const valid = this.showHealModes === false ? ["totalDamage", "both"] : ["totalDamage", "both", "hps", "totalHeal"];
-    this.displayMode = valid.includes(mode) ? mode : "dps";
+    this.displayMode = this.displayModes().includes(mode) ? mode : "dps";
     if (persist) {
       this.safeSetStorage(this.storageKeys.displayMode, this.displayMode);
     }
@@ -5191,6 +5558,7 @@ class DpsApp {
       both: ["header.display.both", "BOTH", "header.display.ariaBoth", "Showing DPS and total damage"],
       hps: ["header.display.hps", "HPS", "header.display.ariaHps", "Showing healing per second"],
       totalHeal: ["header.display.totalHeal", "HEAL", "header.display.ariaHeal", "Showing total healing"],
+      stagger: ["header.display.stagger", "STAG", "header.display.ariaStagger", "Showing stagger dealt"],
       dps: ["header.display.dps", "DPS", "header.display.ariaDps", "Showing DPS"],
     }[this.displayMode];
     const label = this.i18n?.t(labelKey, labelFallback) ?? labelFallback;
@@ -5453,6 +5821,10 @@ class DpsApp {
       this.applyTheme(value, { persist: false });
       return;
     }
+    if (key === this.storageKeys.font) {
+      this.applyFont(value);
+      return;
+    }
     if (key === this.storageKeys.playerLimit) {
       this.setPlayerLimit(value, { persist: false });
       return;
@@ -5605,6 +5977,11 @@ class DpsApp {
       const healAmount = Number(row?.healAmount) || 0;
       return { value: healAmount, text: this.formatAbbreviatedNumber(healAmount) };
     }
+    if (this.displayMode === "stagger") {
+      // Gauge points, small whole numbers (a Story boss's gauge is 40).
+      const stagger = Number(row?.stagger) || 0;
+      return { value: stagger, text: String(stagger) };
+    }
     const dps = Number(row?.dps) || 0;
     const dpsText = `${this.formatDpsThousands(dps)}${this.meterDpsSuffix()}`;
     if (this.displayMode === "both") {
@@ -5730,7 +6107,10 @@ class DpsApp {
   }
 
   renderCurrentRows() {
-    if (this.isCollapse) return;
+    if (this.isCollapse) {
+      this.closeOrphanTooltip();
+      return;
+    }
     let rowsToRender = Array.isArray(this.lastSnapshot) ? this.lastSnapshot : [];
     if (this.lastTargetMode === "trainTargets" && this.isLocalUserIdentified()) {
       rowsToRender = rowsToRender.filter((row) => row.isUser); // by id or name: an unnamed row is still yours
@@ -5753,6 +6133,22 @@ class DpsApp {
     }
     this.updateMeterTotalBar(rowsToRender);
     this.meterUI?.updateFromRows?.(rowsToRender);
+    this.closeOrphanTooltip();
+  }
+
+  // A tooltip whose row is gone closes. A row removed from under the pointer
+  // (a new fight, a reset, a zone change, the meter folded) never fires its
+  // mouse-leave, so the tooltip stayed up over a meter with no rows (Hirai's
+  // screenshots, 2026-10-24).
+  closeOrphanTooltip() {
+    if (!this.hoverTooltipEl?.classList.contains("isVisible")) return;
+    const id = this.hoveredDetailsRowId;
+    const row = !this.isCollapse && id != null
+      ? this.elList?.querySelector?.(`.item[data-row-id="${CSS.escape(String(id))}"]`)
+      : null;
+    if (row) return;
+    this.hoveredDetailsRowId = null;
+    this.hideHoverTooltip();
   }
 
   getDefaultDetailsOpenOptions() {

@@ -481,6 +481,7 @@ mod tests {
             dungeon_id: 600093,
             server_id: 0,
             buffs: None,
+            stagger: None,
         }
     }
 
@@ -494,6 +495,7 @@ mod tests {
             regen: 0,
             damage_received: 0,
             hits_received: 0,
+            received: None,
             dbid,
             server_id: (dbid >> 48) as u16,
             is_supporter: false,

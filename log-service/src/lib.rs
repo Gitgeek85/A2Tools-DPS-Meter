@@ -32,7 +32,13 @@ const DOTS: &str = include_str!("../../src/data/dot_skill_ids.json");
 // state before the pull, which in a crowded place passed 4 MiB for a short
 // fight (2026-10-17).
 const MAX_GZIPPED: usize = 16 * 1024 * 1024;
-const MAX_RECORD_BYTES: usize = 24 * 1024 * 1024;
+// 36 MiB (was 24): a fight at a field boss with hundreds of players came to
+// 30-47 MiB from meters before 2.0.74, which kept every buff change from the
+// half hour before the pull. Memory, not this number, is the real bound: the
+// Worker has 128 MB, and reading and deriving a 32 MiB fight (343 players)
+// peaked at 77 MiB of heap, a 47 MiB one (577 players, 6 minutes) at 191 MiB
+// (2026-10-21). Above this a slice is refused, not run out of memory.
+const MAX_RECORD_BYTES: usize = 36 * 1024 * 1024;
 
 /// The slice inside an upload: zstd from meters 2.0.67 on, gzip before, told
 /// apart by their magic bytes, so every stored slice still derives. Read as it
@@ -45,6 +51,19 @@ fn read_slice(body: &[u8]) -> Option<Decoded> {
     } else {
         evidence_slice::decode_from(GzDecoder::new(body), MAX_RECORD_BYTES)
     }
+}
+
+/// Whether what `read_slice` refused begins as a slice does: then it was
+/// refused for its size, not for what it is.
+fn looks_like_slice(body: &[u8]) -> bool {
+    use std::io::Read;
+    let mut magic = [0u8; 4];
+    let read = if body.starts_with(&[0x28, 0xB5, 0x2F, 0xFD]) {
+        StreamingDecoder::new(body).ok().is_some_and(|mut r| r.read_exact(&mut magic).is_ok())
+    } else {
+        GzDecoder::new(body).read_exact(&mut magic).is_ok()
+    };
+    read && &magic == evidence_slice::MAGIC
 }
 
 #[event(fetch)]
@@ -72,6 +91,9 @@ async fn fetch(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
         return error("too_large", "The slice is larger than any real fight.", 413);
     }
     let Some(decoded) = read_slice(&body) else {
+        if looks_like_slice(&body) {
+            return error("too_large", "The fight's records are larger than this service reads.", 413);
+        }
         return error(
             "not_a_slice",
             "Not a gzipped or zstd-compressed Evidence Slice this build reads, or larger than any real fight.",

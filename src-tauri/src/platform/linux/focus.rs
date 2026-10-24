@@ -120,11 +120,33 @@ function follow(w) {
     else if (widget(w)) {
         fresh.push(w);
         if (fresh.length > 32) fresh.shift();
+    } else {
+        // Another of the meter's windows the meter showed on its own (back
+        // with the game after hiding, a plugin showing itself): KWin takes it
+        // for a new window and activates it, so it took the focus from the
+        // game (2.0.76, now that hidden windows are unmapped). It hands the
+        // focus back, as an icon does; one the player opened keeps it.
+        callDBus(SERVICE, PATH, IFACE, "Quiet", String(w.caption), function (answer) {
+            if (String(answer) !== "true") return;
+            var now = workspace.activeWindow || workspace.activeClient;
+            if (now === w && lastOther && !lastOther.deleted) activate(lastOther);
+            else {
+                fresh.push(w);
+                if (fresh.length > 32) fresh.shift();
+            }
+        });
     }
     var done = w.interactiveMoveResizeFinished || w.clientFinishUserMovedResized;
     if (done) done.connect(function () { remember(w); });
     place(w);
 }
+// A window of the meter going away (hidden: on KDE the meter unmaps the
+// windows it hides) leaves its place behind, so it comes back there.
+function gone(w) {
+    if (mine(w) && onScreen(w.frameGeometry)) remember(w);
+}
+if (workspace.windowRemoved) workspace.windowRemoved.connect(gone);
+else if (workspace.clientRemoved) workspace.clientRemoved.connect(gone);
 if (workspace.windowActivated) {
     workspace.windowActivated.connect(onActivated);
     report(workspace.activeWindow);
@@ -158,6 +180,10 @@ static PLACES: OnceLock<Places> = OnceLock::new();
 /// places only widgets then, where the meter left them (`load`).
 static X11_IN_WAYLAND: AtomicBool = AtomicBool::new(false);
 
+/// The script is running, so KWin puts each of the meter's windows back where
+/// it was each time it appears (`place` in the script).
+static PLACING: AtomicBool = AtomicBool::new(false);
+
 /// Keep the meter's windows where they were left, through KWin (#76). Only
 /// in a Wayland session: under X11 the meter places its own windows, as on
 /// Windows (in a Wayland session too, but for its widgets: X11_IN_WAYLAND).
@@ -175,6 +201,13 @@ pub fn places_own_windows() -> bool {
     X11_IN_WAYLAND.load(Ordering::Relaxed)
 }
 
+/// Whether KWin puts the meter's windows back where they were whenever they
+/// appear: on native Wayland in KDE, with the script running. A window can
+/// then be hidden for good and shown again at its place.
+pub fn kwin_places_windows() -> bool {
+    PLACING.load(Ordering::Relaxed) && PLACES.get().is_some() && !X11_IN_WAYLAND.load(Ordering::Relaxed)
+}
+
 /// 0: not known (no report yet, or not KDE). 1: the game or one of the
 /// meter's own windows is active. 2: something else is.
 static ACTIVE: AtomicU8 = AtomicU8::new(0);
@@ -183,6 +216,21 @@ static ACTIVE: AtomicU8 = AtomicU8::new(0);
 /// reports are not trusted: the setting is on by default, and a game window
 /// this does not recognise must not leave the meter hidden for good.
 static SEEN_GAME: AtomicBool = AtomicBool::new(false);
+
+/// The meter's windows it is showing on its own, by title, and since when:
+/// they hand the focus back as they appear (`Focus::quiet`).
+static QUIET: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>> =
+    std::sync::LazyLock::new(Default::default);
+/// How long a quiet show waits for its window to appear.
+const QUIET_FOR: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// The meter is showing the window titled `title` on its own, not because the
+/// player asked: it is not to take the focus (`Focus::quiet`).
+pub fn note_quiet_show(title: &str) {
+    if PLACING.load(Ordering::Relaxed) {
+        QUIET.lock().unwrap_or_else(|p| p.into_inner()).insert(title.to_string(), std::time::Instant::now());
+    }
+}
 
 /// The connection that serves `Focus`; dropped, the service would go away.
 static CONNECTION: OnceLock<zbus::blocking::Connection> = OnceLock::new();
@@ -262,6 +310,14 @@ impl Focus {
         }
     }
 
+    /// Whether the window titled `caption`, just appeared, was shown by the
+    /// meter on its own (`note_quiet_show`), so it gives the focus back.
+    fn quiet(&self, caption: String) -> bool {
+        let mut quiet = QUIET.lock().unwrap_or_else(|p| p.into_inner());
+        quiet.retain(|_, at| at.elapsed() < QUIET_FOR);
+        quiet.remove(&caption).is_some()
+    }
+
     /// Where one of the meter's windows belongs, `"x,y,width,height"`, or ""
     /// to leave it where KWin put it.
     fn placement(&self, caption: String) -> String {
@@ -327,6 +383,7 @@ pub fn watch(on_change: impl Fn() + Send + Sync + 'static) -> Result<(), String>
     kwin.call_method("start", &()).map_err(|e| format!("starting the script: {e}"))?;
     let _ = ON_CHANGE.set(Box::new(on_change));
     let _ = CONNECTION.set(connection);
+    PLACING.store(true, Ordering::Relaxed);
     tracing::info!("KWin reports the active window (script {id})");
     Ok(())
 }

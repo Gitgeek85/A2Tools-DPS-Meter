@@ -273,13 +273,18 @@ fn canonicalise(record: &mut FightRecord) {
     if record.buffs.as_ref().is_some_and(|b| b.is_empty()) {
         record.buffs = None;
     }
+    // Stagger gauges (`05 E0`) are not on the slice's allowlist, so a slice
+    // derives none: "no data", and fight.json keeps its shape.
+    if record.stagger.as_ref().is_some_and(|w| w.is_empty()) {
+        record.stagger = None;
+    }
 }
 
 /// Bumped when the service derives differently from the meter of the same
 /// version, so a2tools.app re-derives its logs: it re-derives every log whose
 /// parser version is older than the service's. `2.0.48.1` sorts after
 /// `2.0.48` and before `2.0.49`.
-const SERVICE_REVISION: u32 = 4;
+const SERVICE_REVISION: u32 = 5;
 
 pub fn parser_version() -> String {
     format!("{}.{}", crate::entity::fight_record::APP_VERSION, SERVICE_REVISION)
@@ -445,9 +450,9 @@ fn derive_fight_with(
         let mut reset_at = None;
         for (n, (dt_ms, packet)) in records.iter().enumerate().take(upto) {
             processor.set_override_timestamp(Some(*dt_ms as i64));
-            let before = storage.last_zone_reset_ms();
+            let before = (storage.last_zone_reset_ms(), storage.party_ended_at_ms());
             processor.consume_stream(packet);
-            if reset_at.is_none() && *dt_ms > 0 && storage.last_zone_reset_ms() != before {
+            if reset_at.is_none() && *dt_ms > 0 && (storage.last_zone_reset_ms(), storage.party_ended_at_ms()) != before {
                 reset_at = Some(n);
             }
         }
@@ -459,6 +464,9 @@ fn derive_fight_with(
     // that teleport, and the replay then had nothing left to derive: two
     // Gargaum wipes in a 2026-07 capture. The live meter had saved the fight
     // before; so stop the replay just short of the first reset after the pull.
+    // The party ending resets combat too: the others leaving after a kill
+    // leave you alone in it (38 logs at 2.0.76.4, 2026-10-23, once a roster
+    // with a member from another world read whole).
     let (mut storage, mut processor, reset_at) = replay(records.len());
     if let Some(n) = reset_at {
         (storage, processor, _) = replay(n);
@@ -566,6 +574,9 @@ mod tests {
         canonicalise(&mut record);
         assert!(record.buffs.is_none());
         assert!(serde_json::to_value(&record).unwrap().get("buffs").is_none(), "fight.json keeps its shape");
+        record.stagger = Some(Vec::new());
+        canonicalise(&mut record);
+        assert!(serde_json::to_value(&record).unwrap().get("stagger").is_none(), "fight.json keeps its shape");
     }
 
     #[test]

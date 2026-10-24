@@ -378,6 +378,21 @@ impl DpsCalculator {
             }
         }
 
+        // Stagger taken off the shown targets' gauges in the fight, on the
+        // rows of who took it (Stagger mode). Before the orphan merges
+        // below, which carry it along with the damage.
+        let stagger_targets: HashSet<i32> = target_ids.iter().copied().collect();
+        for ((actor_id, skill), stagger) in self.data_storage.stagger_totals(fight_start, fight_end, &stagger_targets) {
+            let raw_uid = summon_resolver::resolve(actor_id, &summon_data);
+            let nickname = resolve_nickname(raw_uid, &nickname_data, &summon_data);
+            let uid = *canonical.get(&nickname).unwrap_or(&raw_uid);
+            if let Some(entry) = dps_data.map.get_mut(&uid) {
+                entry.stagger += stagger;
+                let shown = crate::capture::stream_processor::normalize_skill_id(&self.skill_lookup, skill);
+                *entry.stagger_skills.entry(shown).or_default() += stagger;
+            }
+        }
+
         // Orphan summon inference: attribute an entity that is really a summon to
         // the player who owns it, for the summons the spawn packet never covered.
         //
@@ -1143,12 +1158,14 @@ impl DpsCalculator {
                     .or_else(|| heal_class(id));
                     // Aggregate per-actor stats across all targets
                     let (mut party_heal, mut regen, mut dmg_recv, mut hits_recv) = (0i64, 0i64, 0i64, 0i32);
+                    let mut received = crate::entity::details_context::ReceivedHits::default();
                     for td in combat_data.values() {
                         if let Some(ad) = td.actors.get(&id) {
                             party_heal += ad.party_heal;
                             regen += ad.regen;
                             dmg_recv += ad.damage_received;
                             hits_recv += ad.hits_received;
+                            received.add(ad.received);
                         }
                     }
                     // Joined on the unobscured nickname: the roster is keyed by
@@ -1164,6 +1181,7 @@ impl DpsCalculator {
                         regen,
                         damage_received: dmg_recv,
                         hits_received: hits_recv,
+                        received: Some(received),
                         dbid: roster.map(|m| m.dbid).unwrap_or(0),
                         server_id: roster.map(|m| m.server_id).unwrap_or(0),
                         is_supporter: supporters.contains(
@@ -1204,6 +1222,10 @@ impl DpsCalculator {
                 target_data.last_damage_time,
                 actors.iter().map(|a| a.actor_id),
             );
+            // Every gauge that took a deduction in the fight, not only the
+            // target's. A window still open is saved as missed, and stays
+            // open here: this fight is saved again while it goes on.
+            let stagger = self.data_storage.fight_stagger(target_data.first_damage_time, target_data.last_damage_time);
             let record = FightRecord {
                 id,
                 boss_name,
@@ -1221,6 +1243,7 @@ impl DpsCalculator {
                 dungeon_id: fight_dungeon(&self.npc_lookup, mob_code, roster_dungeon),
                 server_id: self.data_storage.fight_server_id(),
                 buffs: Some(buffs),
+                stagger: Some(stagger),
             };
 
             if is_ended {
@@ -1234,17 +1257,30 @@ impl DpsCalculator {
 
     /// The buffs and debuffs of the fight on `target_id` so far, for Details
     /// on a live fight: the same tracks a saved fight keeps, on the actors the
-    /// saved record would list.
-    pub fn live_fight_buffs(&self, target_id: i32) -> Option<crate::combat::fight_buffs::LiveFightBuffs> {
+    /// saved record would list; and its stagger windows, as a saved fight's.
+    ///
+    /// `shown`: every target Details shows together (All targets), whose
+    /// timeline starts at the first of them. The stagger windows are those of
+    /// that whole span, on its time: the gauge can be on another target than
+    /// the first one listed (Shaman Kumbahum among his Brawlers, 2026-10-22).
+    pub fn live_fight_buffs(&self, target_id: i32, shown: &[i32]) -> Option<crate::combat::fight_buffs::LiveFightBuffs> {
         let target = self.data_storage.get_target_snapshot_light(target_id)?;
         let (start, end) = (target.first_damage_time, target.last_damage_time.max(target.first_damage_time));
         let details = self.get_hover_details(target_id, None);
         let actors: HashSet<i32> = details.skills.iter().map(|s| s.actor_id).collect();
+        let (mut span_start, mut span_end) = (start, end);
+        for &id in shown {
+            if let Some(t) = self.data_storage.get_target_snapshot_light(id) {
+                span_start = span_start.min(t.first_damage_time);
+                span_end = span_end.max(t.last_damage_time);
+            }
+        }
         Some(crate::combat::fight_buffs::LiveFightBuffs {
             target_id,
             start_time_ms: start,
             duration_ms: end - start,
             buffs: crate::combat::fight_buffs::for_fight(&self.data_storage, target_id, start, end, actors),
+            stagger: self.data_storage.fight_stagger(span_start, span_end),
         })
     }
 
@@ -1355,12 +1391,14 @@ impl DpsCalculator {
                 ).map_or(0, |jc| jc.class_prefix());
                 // Aggregate per-actor stats
                 let (mut party_heal, mut regen, mut dmg_recv, mut hits_recv) = (0i64, 0i64, 0i64, 0i32);
+                    let mut received = crate::entity::details_context::ReceivedHits::default();
                 for td in combat_data.values() {
                     if let Some(ad) = td.actors.get(&id) {
                         party_heal += ad.party_heal;
                         regen += ad.regen;
                         dmg_recv += ad.damage_received;
                         hits_recv += ad.hits_received;
+                            received.add(ad.received);
                     }
                 }
                 DetailsActorSummary {
@@ -1372,6 +1410,7 @@ impl DpsCalculator {
                     regen,
                     damage_received: dmg_recv,
                     hits_received: hits_recv,
+                        received: Some(received),
                     // The live view is never uploaded: nothing here reads the
                     // identity a saved record keeps.
                     dbid: 0,

@@ -10,7 +10,8 @@ html, body {
 body {
   display: flex;
   flex-direction: column;
-  background: rgba(10, 14, 22, var(--panel-alpha, 1));
+  /* The Settings colours (pluginHost.js), else the meter's own. */
+  background: rgba(var(--theme-bg, 10, 14, 22), var(--panel-alpha, 1));
   box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, calc(0.12 * var(--panel-alpha, 1)));
 }
@@ -21,6 +22,7 @@ body {
   gap: 8px;
   padding: 6px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, calc(0.08 * var(--panel-alpha, 1)));
+  background: rgba(var(--theme-panel, 10, 14, 22), var(--panel-alpha, 1));
   cursor: grab;
   user-select: none;
 }
@@ -35,6 +37,7 @@ body {
 /* The meter's header icons: 15px line icons, dim until hovered. */
 .pluginMeter,
 .pluginSettings,
+.pluginDock,
 .pluginCompact,
 .pluginClose {
   flex: none;
@@ -52,6 +55,7 @@ body {
 }
 .pluginMeter svg,
 .pluginSettings svg,
+.pluginDock svg,
 .pluginCompact svg,
 .pluginClose svg {
   width: 15px;
@@ -74,6 +78,8 @@ body {
 .pluginMeter:focus-visible,
 .pluginSettings:hover,
 .pluginSettings:focus-visible,
+.pluginDock:hover,
+.pluginDock:focus-visible,
 .pluginCompact:hover,
 .pluginCompact:focus-visible,
 .pluginClose:hover,
@@ -85,7 +91,7 @@ body {
   width: 64px;
   height: 14px;
   margin: 0;
-  accent-color: #8fc2ff;
+  accent-color: var(--theme-accent, #8fc2ff);
   opacity: 0.6;
   cursor: pointer;
 }

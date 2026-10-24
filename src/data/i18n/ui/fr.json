@@ -10,8 +10,14 @@
       "ariaBoth": "Affiche les DPS et les dégâts totaux",
       "hps": "HPS",
       "totalHeal": "HEAL",
+      "stagger": "ÉTOUR",
       "ariaHps": "Affiche les soins par seconde",
-      "ariaHeal": "Affiche les soins totaux"
+      "ariaHeal": "Affiche les soins totaux",
+      "ariaStagger": "Affiche l'étourdissement infligé à la jauge du boss"
+    },
+    "updates": {
+      "meter": "A2Tools DPS Meter {version} est disponible",
+      "plugins": "Mises à jour des plugins : {list}"
     }
   },
   "details": {
@@ -121,7 +127,12 @@
       "deaths": "Morts",
       "avgDps": "DPS moyen",
       "peakDps": "DPS max",
-      "peakDpsTip": "Le DPS le plus élevé sur 5 secondes du combat"
+      "peakDpsTip": "Le DPS le plus élevé sur 5 secondes du combat",
+      "blockedTaken": "Bloqué (Parfait)",
+      "blockedTakenTip": "Des coups subis : bloqués au bouclier, et entre parenthèses bloqués parfaitement",
+      "parriedTaken": "Paré (Parfait)",
+      "parriedTakenTip": "Des coups subis : parés, et entre parenthèses parés parfaitement",
+      "parryRateTip": "De vos coups : la part que la cible a parée"
     },
     "titleFor": "pour",
     "titleVs": "contre",
@@ -170,6 +181,25 @@
         "unseen": "Expiré (fin non observée)",
         "stillOn": "Encore actif à la fin du combat",
         "replaced": "Remplacé par un nouveau niveau"
+      }
+    },
+    "stagger": {
+      "title": "Étourdissement",
+      "unknownActor": "Inconnu",
+      "unknownSkill": "Compétence inconnue",
+      "older": "Aucune donnée d'étourdissement pour ce combat (enregistré par une version antérieure).",
+      "loading": "Chargement...",
+      "none": "Aucune jauge d'étourdissement n'a été entamée dans ce combat.",
+      "incomplete": "Son début n'a pas été vu : l'étourdissement antérieur manque.",
+      "ambiguous": "Peut appartenir à un autre joueur : quelqu'un d'autre a frappé au même moment.",
+      "ambiguousCount": "{n} coup(s) peuvent appartenir à un autre joueur.",
+      "value": "{n} d'étourdissement",
+      "ended": {
+        "break": "Brisée après {secs} s",
+        "reset": "Manquée : il restait {missing} sur {max}",
+        "death": "Vaincu avant la rupture : il restait {missing} sur {max}",
+        "despawn": "Parti avant la rupture : il restait {missing} sur {max}",
+        "fightEnd": "Encore ouverte à la fin du combat : il restait {missing} sur {max}"
       }
     },
     "fightTimeline": "Chronologie du combat",
@@ -273,11 +303,13 @@
     "odyleEnergy": "Énergie d'Odyle",
     "showTtk": "Afficher le temps de kill estimé",
     "showHealModes": "Afficher les soins dans le bouton DPS/DMG",
+    "showStaggerMode": "Afficher l'étourdissement dans le bouton DPS/DMG",
     "showTotalDps": "Afficher le total du groupe",
     "roundDps": "Abréger le DPS en milliers (13k)",
     "showDpsSuffix": "Ajouter /s au DPS",
     "autoHideMeter": "Masquer quand AION2 n'est pas au premier plan",
     "hideWhenGameClosed": "Masquer quand AION2 est fermé",
+    "hideWhenSolo": "Afficher seulement en groupe",
     "showSuspendBtn": "Afficher le bouton de pause de capture",
     "showLockBtn": "Afficher le bouton de verrouillage (clic au travers)",
     "playerLimit": {
@@ -285,6 +317,7 @@
     },
     "partyPresence": "Afficher les utilisateurs d'A2Tools de mon groupe",
     "shareBossTimers": "Partager les minuteurs des boss de terrain",
+    "shareSupplyRequests": "Partager les demandes de ravitaillement",
     "debugLogging": "Journal de débogage",
     "quit": "Quitter",
     "discord": {
@@ -342,6 +375,44 @@
         "varian": "Varian"
       }
     },
+    "settingsTheme": {
+      "label": "Couleurs des paramètres",
+      "tip": "Les couleurs de cette fenêtre de paramètres. Le compteur garde son propre thème.",
+      "options": {
+        "meter": "Thème du compteur",
+        "midnight": "Minuit",
+        "graphite": "Graphite",
+        "violet": "Violet",
+        "forest": "Forêt",
+        "crimson": "Cramoisi",
+        "ocean": "Océan",
+        "sapphire": "Saphir",
+        "indigo": "Indigo",
+        "rose": "Rose",
+        "sunset": "Coucher de soleil",
+        "amber": "Ambre",
+        "copper": "Cuivre",
+        "lime": "Citron vert",
+        "ice": "Glace",
+        "slate": "Ardoise",
+        "onyx": "Onyx"
+      }
+    },
+    "font": {
+      "label": "Police",
+      "tip": "La police du compteur, des paramètres, de l'historique des combats et des détails.",
+      "options": {
+        "meter": "Police du compteur",
+        "system": "Police du système",
+        "inter": "Inter",
+        "exo2": "Exo 2",
+        "oxanium": "Oxanium",
+        "jetbrains": "JetBrains Mono (chiffres de même largeur)",
+        "atkinson": "Atkinson Hyperlegible (lettres et chiffres nets)",
+        "lexend": "Lexend (lecture facilitée)",
+        "andika": "Andika (pour la dyslexie)"
+      }
+    },
     "textureOffset": "Décaler les textures",
     "barTexture": {
       "label": "Texture des barres",
@@ -358,6 +429,12 @@
         "galaxy": "Galaxie",
         "aura": "Aura"
       }
+    },
+    "appearanceGroups": {
+      "general": "Général",
+      "colours": "Couleurs",
+      "layout": "Disposition",
+      "opacity": "Opacité"
     },
     "language": {
       "label": "Langue"
@@ -455,9 +532,9 @@
       "supporter": "Soutien"
     },
     "sendLogs": {
-      "hint": "Envoie tes 3 derniers journaux de paquets au développeur, pour un rapport de bug.",
+      "hint": "Envoie ton journal de débogage et tes derniers journaux de paquets (3 fichiers en tout) au développeur, pour un rapport de bug.",
       "button": "Envoyer les journaux au dev",
-      "confirm": "Envoyer tes 3 derniers journaux de paquets au développeur d'A2 Tools ?\n\nLes journaux de paquets sont le trafic brut du jeu enregistré pendant que la journalisation était activée, noms de personnages compris. Seul le développeur peut les ouvrir, et ils sont supprimés au bout de 30 jours.",
+      "confirm": "Envoyer ton journal de débogage et tes derniers journaux de paquets au développeur d'A2 Tools ?\n\nLe journal de débogage note ce qu'a fait le compteur. Les journaux de paquets sont le trafic brut du jeu enregistré pendant que la journalisation des paquets était activée. Les deux peuvent contenir des noms de personnages. Seul le développeur peut les ouvrir, et ils sont supprimés au bout de 30 jours.",
       "sending": "Envoi...",
       "sent": "Envoyé. Ton code de rapport est {code} : donne-le au développeur sur Discord.",
       "failed": "Envoi impossible : {error}"
@@ -478,6 +555,7 @@
       "detailsMonitor": "Ouvre la fenêtre Détails sur l'écran choisi et l'y garde.",
       "showTtk": "À côté du chronomètre, une estimation de la durée totale du combat contre le boss.",
       "showHealModes": "Le bouton DPS/DMG du compteur affiche aussi les soins par seconde et les soins totaux.",
+      "showStaggerMode": "Le bouton DPS/DMG du compteur affiche aussi l'étourdissement que chaque joueur a retiré de la jauge du boss.",
       "showTotalDps": "Une barre sous les lignes avec le DPS et les dégâts de tout le groupe.",
       "roundDps": "13 412 s'affiche 13k.",
       "showSuspendBtn": "Un bouton sur le compteur qui arrête la lecture du trafic du jeu jusqu'à ce que tu appuies à nouveau.",
@@ -495,13 +573,15 @@
       "updateRate": "À quelle fréquence les chiffres du compteur se rafraîchissent. Plus rapide affiche les coups plus tôt mais utilise plus de CPU.",
       "partyPresence": "Les membres du groupe qui utilisent aussi A2Tools voient une petite étiquette A2 à côté de votre nom, et vous voyez la leur. Tout membre du groupe utilisant A2Tools peut la voir et saura donc que vous utilisez un meter tiers. Seuls des hachages des noms de personnages et des serveurs sont envoyés.",
       "shareBossTimers": "Partage les minuteurs des boss de terrain avec les autres joueurs via a2tools.app (et son partenaire Aion 2 Timers) : les boss de votre carte quand vous l'ouvrez, et les boss de terrain que vous voyez tués, et leurs PV pendant que vous les combattez. Seuls le serveur, les boss, leurs heures et PV sont envoyés.",
+      "shareSupplyRequests": "Partage les tableaux de demandes de ravitaillement de votre serveur avec le Profiteer d'a2tools.app quand ils changent (après chaque réinitialisation) : le serveur, les tableaux et leurs demandes. Rien sur votre personnage ni sa progression n'est envoyé.",
       "debugLogging": "Écrit un journal de diagnostic que le développeur peut utiliser pour trouver les problèmes.",
       "saveRawPackets": "Enregistre le trafic brut du jeu pour les rapports de bug. Le journal de débogage s'active avec.",
       "globalHotkeys": "Les touches ci-dessous fonctionnent partout, même quand le jeu est au premier plan. Désactivé, elles sont libérées pour d'autres programmes. Sous Linux, le bureau les enregistre et peut vous demander de les approuver.",
       "pluginDevMode": "Charge des plugins depuis des dossiers de cet ordinateur, pour les créer et les tester. Ils ne sont pas vérifiés : ne chargez que des plugins de confiance.",
       "showMeter": "Désactivé : seuls vos plugins s'affichent. Le meter continue d'enregistrer les combats et de les envoyer en arrière-plan. Réaffichez-le ici, avec le raccourci afficher/masquer, ou avec le bouton meter d'une fenêtre de plugin.",
       "clearOnZone": "Quand le dernier combat quitte le compteur après un changement de zone. Chaque combat reste dans l'Historique dans tous les cas.",
-      "hideWhenGameClosed": "Le compteur se masque quand le jeu n'est pas lancé et réapparaît à son démarrage."
+      "hideWhenGameClosed": "Le compteur se masque quand le jeu n'est pas lancé et réapparaît à son démarrage.",
+      "hideWhenSolo": "Le compteur se masque tant que vous n'êtes pas en groupe et réapparaît quand vous en rejoignez un. Le raccourci Afficher/Masquer le fait toujours apparaître."
     },
     "globalHotkeys": "Utiliser les raccourcis",
     "hotkeyConsent": {
@@ -561,7 +641,11 @@
       "enabledTip": "Activé : démarre avec le compteur. Désactivé : reste installé mais ne s'exécute pas.",
       "showMeter": "Afficher le DPS meter",
       "hideClosed": "Masquer quand AION2 est fermé",
-      "hideUnfocused": "Masquer quand AION2 n'est pas au premier plan"
+      "hideUnfocused": "Masquer quand AION2 n'est pas au premier plan",
+      "inDock": "Dans le dock des plugins (désactivé : sa propre fenêtre)",
+      "search": "Rechercher",
+      "noMatch": "Aucun plugin ne correspond.",
+      "permsTitle": "Il peut :"
     },
     "clearOnZone": {
       "label": "Vider le compteur",
@@ -702,5 +786,22 @@
     "alsoAsks": "La nouvelle version demande aussi à :",
     "updateNow": "Mettre à jour maintenant ?",
     "failed": "Échec de la mise à jour :"
+  },
+  "pluginDock": {
+    "tabs": "Afficher les plugins en onglets",
+    "stack": "Empiler les plugins",
+    "fold": "Replier le dock",
+    "unfold": "Déplier le dock",
+    "hideControls": "Masquer les commandes",
+    "showControls": "Afficher les commandes",
+    "popOut": "Ouvrir dans sa propre fenêtre",
+    "pluginSettings": "Réglages des plugins",
+    "hide": "Masquer (le plugin continue de tourner)",
+    "close": "Masquer le dock (les plugins continuent de tourner)",
+    "hideMeter": "Masquer le compteur DPS",
+    "showMeter": "Afficher le compteur DPS",
+    "settings": "Paramètres du compteur",
+    "opacity": "Opacité du fond",
+    "failed": "Ce plugin n'a pas pu démarrer : {error}"
   }
 }
