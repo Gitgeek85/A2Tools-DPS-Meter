@@ -1178,7 +1178,10 @@ class DpsApp {
       }
     });
     this.hoverIdleWatch = setInterval(() => {
-      if (!this.hoverIdleOnly || !this.hoveredDetailsRowId) return;
+      // By the tooltip being up, not by a hovered row: on Wayland the page can
+      // keep a row :hover after the pointer has gone, and leaving it then
+      // cleared the row but kept the tooltip (Hirai, KDE Wayland).
+      if (!this.hoverIdleOnly || !this.hoverTooltipEl?.classList.contains("isVisible")) return;
       if (Date.now() - this.lastPointerMoveAt < 4000) return;
       this.hoveredDetailsRowId = null;
       this.hideHoverTooltip();
