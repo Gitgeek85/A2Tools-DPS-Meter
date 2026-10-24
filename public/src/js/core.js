@@ -6107,7 +6107,10 @@ class DpsApp {
   }
 
   renderCurrentRows() {
-    if (this.isCollapse) return;
+    if (this.isCollapse) {
+      this.closeOrphanTooltip();
+      return;
+    }
     let rowsToRender = Array.isArray(this.lastSnapshot) ? this.lastSnapshot : [];
     if (this.lastTargetMode === "trainTargets" && this.isLocalUserIdentified()) {
       rowsToRender = rowsToRender.filter((row) => row.isUser); // by id or name: an unnamed row is still yours
@@ -6130,6 +6133,22 @@ class DpsApp {
     }
     this.updateMeterTotalBar(rowsToRender);
     this.meterUI?.updateFromRows?.(rowsToRender);
+    this.closeOrphanTooltip();
+  }
+
+  // A tooltip whose row is gone closes. A row removed from under the pointer
+  // (a new fight, a reset, a zone change, the meter folded) never fires its
+  // mouse-leave, so the tooltip stayed up over a meter with no rows (Hirai's
+  // screenshots, 2026-10-24).
+  closeOrphanTooltip() {
+    if (!this.hoverTooltipEl?.classList.contains("isVisible")) return;
+    const id = this.hoveredDetailsRowId;
+    const row = !this.isCollapse && id != null
+      ? this.elList?.querySelector?.(`.item[data-row-id="${CSS.escape(String(id))}"]`)
+      : null;
+    if (row) return;
+    this.hoveredDetailsRowId = null;
+    this.hideHoverTooltip();
   }
 
   getDefaultDetailsOpenOptions() {
