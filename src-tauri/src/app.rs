@@ -1442,6 +1442,16 @@ async fn show_update_window(
         tracing::info!("Update {} available (running {}); this install updates through its package manager", latest, current);
         return Ok(false);
     }
+    // Fork: never offer to install the official build over this one. Note it
+    // in the console instead; pull upstream into the fork with git.
+    tracing::info!(
+        "Upstream has v{} (this fork is built from v{}): merge upstream/main into your branch to update",
+        latest, current
+    );
+    let _ = (&package_sha256, &app);
+    if cfg!(not(test)) {
+        return Ok(false);
+    }
     // `ask` false: only whether there is something to offer, for the green
     // button in the meter's title, which asks when clicked.
     if ask == Some(false) {
@@ -3323,6 +3333,13 @@ pub fn run() {
             crate::combat::hit_log::set_enabled(
                 settings.get("dpsMeter.hitLogEnabled").as_deref() != Some("false"),
                 &app_data_dir,
+            );
+            crate::combat::hit_log::prune(
+                &app_data_dir,
+                settings
+                    .get("dpsMeter.hitLogKeepDays")
+                    .and_then(|v| v.trim().parse::<u64>().ok())
+                    .unwrap_or(14),
             );
             if settings.get("dpsMeter.saveRawPackets").as_deref() == Some("true") {
                 logging::logger::set_packet_log_enabled(true, &app_data_dir);

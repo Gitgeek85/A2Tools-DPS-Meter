@@ -50,6 +50,39 @@ pub fn set_enabled(enabled: bool, app_data_dir: &std::path::Path) {
     }
 }
 
+/// Delete hit logs (and report CSVs) older than `keep_days` days.
+/// `keep_days` 0 keeps everything.
+pub fn prune(app_data_dir: &std::path::Path, keep_days: u64) {
+    if keep_days == 0 {
+        return;
+    }
+    let dir = app_data_dir.join("hitlog");
+    let Ok(entries) = std::fs::read_dir(&dir) else { return };
+    let max_age = std::time::Duration::from_secs(keep_days * 86_400);
+    let now = std::time::SystemTime::now();
+    let mut removed = 0;
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        let ours = (name.starts_with("hits_") && name.ends_with(".jsonl"))
+            || (name.starts_with("report_") && name.ends_with(".csv"));
+        if !ours {
+            continue;
+        }
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| now.duration_since(t).ok())
+            .is_some_and(|age| age > max_age);
+        if old && std::fs::remove_file(entry.path()).is_ok() {
+            removed += 1;
+        }
+    }
+    if removed > 0 {
+        tracing::info!("Hit log: removed {} file(s) older than {} days", removed, keep_days);
+    }
+}
+
 pub fn is_enabled() -> bool {
     slot().lock().is_some()
 }
