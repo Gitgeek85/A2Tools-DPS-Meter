@@ -1719,9 +1719,17 @@ pub fn plugin_close(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin:
 /// events so far (the page delivers those it has not yet), and the character
 /// (for `events:character`).
 #[tauri::command]
-pub fn plugin_hello(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>) -> Result<Value, String> {
+pub fn plugin_hello(app: tauri::AppHandle, window: tauri::WebviewWindow, plugin: Option<String>, fresh: Option<bool>) -> Result<Value, String> {
     let id = window_plugin(&window, plugin.as_deref())?;
     tracing::debug!("Plugins: {id} starts (in {})", window.label());
+    // A plugin starting afresh knows none of the widgets an earlier run of it
+    // left open (moved into the dock, or out of it, it keeps them): it would
+    // never close them, and they stayed on screen frozen beside the anchor
+    // grid (#108). They go; the plugin opens again what it wants. Not on a
+    // page that started over by itself: it has opened its widgets already.
+    if fresh == Some(true) {
+        widgets::close_all(&app, &id);
+    }
     let host = host(&app)?;
     let manifest = host.with(&id, |l| l.manifest.clone()).ok_or("plugin not loaded")?;
     let replay: Vec<Value> =

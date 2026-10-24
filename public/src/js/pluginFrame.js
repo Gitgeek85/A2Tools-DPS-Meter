@@ -198,7 +198,8 @@
     };
 
     const start = () =>
-      call("plugin_hello").then((hello) => {
+      // Fresh: the meter closes widgets an earlier run of the plugin left.
+      call("plugin_hello", { fresh: true }).then((hello) => {
         manifest = hello.manifest;
         for (const [event, data] of startState(hello)) deliver(event, data);
         run = hello.run;
