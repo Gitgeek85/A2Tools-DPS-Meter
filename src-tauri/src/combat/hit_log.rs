@@ -78,6 +78,7 @@ impl Kind {
 
 #[derive(Serialize)]
 struct Line<'a> {
+    kind: &'a str,
     ts: i64,
     /// "out" = you hit something, "in" = something hit you.
     dir: &'a str,
@@ -102,15 +103,41 @@ struct Line<'a> {
     dot: bool,
     dtype: i32,
     specs: [bool; 5],
+    /// HP the attacker got back from this hit (life steal), 0 if none.
+    heal: i32,
+    /// Player on player: party heal/buff, not PvP damage.
+    friendly: bool,
+}
+
+#[derive(Serialize)]
+struct Event<'a> {
+    kind: &'a str,
+    ts: i64,
+    actor: i32,
+    target: i32,
+    skill: i32,
+    amount: i64,
+}
+
+#[derive(Serialize)]
+struct Stats<'a> {
+    kind: &'a str,
+    ts: i64,
+    entity: Option<i32>,
+    whole: bool,
+    /// (stat id, new value) pairs, raw: ids still to be mapped.
+    values: &'a [(u16, i32)],
 }
 
 /// Record one hit. `outgoing`: the local player dealt it.
-pub fn record(pdp: &ParsedDamagePacket, outgoing: bool, other: Kind, other_code: i32) {
-    let mut guard = slot().lock();
-    let Some(log) = guard.as_mut() else { return };
+pub fn record(pdp: &ParsedDamagePacket, outgoing: bool, other: Kind, other_code: i32, friendly: bool) {
+    if !is_enabled() {
+        return;
+    }
 
     let has = |s: SpecialDamage| pdp.specials().contains(&s);
     let line = Line {
+        kind: "hit",
         ts: pdp.timestamp(),
         dir: if outgoing { "out" } else { "in" },
         actor: pdp.actor_id(),
@@ -132,11 +159,49 @@ pub fn record(pdp: &ParsedDamagePacket, outgoing: bool, other: Kind, other_code:
         dot: pdp.is_dot(),
         dtype: pdp.damage_type(),
         specs: *pdp.spec_flags(),
+        heal: pdp.heal_amount(),
+        friendly,
     };
-    let Ok(json) = serde_json::to_string(&line) else { return };
+    if let Ok(json) = serde_json::to_string(&line) {
+        write_line(pdp.timestamp(), &json);
+    }
+}
+
+/// A heal, HoT tick or resource (MP etc.) restore that involves the local
+/// player. `kind`: "heal", "hot" or "mp".
+pub fn record_event(ts: i64, kind: &str, actor: i32, target: i32, skill: i32, amount: i64, local: Option<i64>) {
+    let Some(me) = local else { return };
+    let me = me as i32;
+    if actor != me && target != me {
+        return;
+    }
+    if !is_enabled() {
+        return;
+    }
+    let ev = Event { kind, ts, actor, target, skill, amount };
+    if let Ok(json) = serde_json::to_string(&ev) {
+        write_line(ts, &json);
+    }
+}
+
+/// A stat-sheet record from the server (your own stats). Logged raw so the
+/// stat ids (HP, MP, ...) can be worked out from real data.
+pub fn record_stats(ts: i64, entity: Option<i32>, whole: bool, values: &[(u16, i32)]) {
+    if !is_enabled() {
+        return;
+    }
+    let ev = Stats { kind: "stats", ts, entity, whole, values };
+    if let Ok(json) = serde_json::to_string(&ev) {
+        write_line(ts, &json);
+    }
+}
+
+fn write_line(ts: i64, json: &str) {
+    let mut guard = slot().lock();
+    let Some(log) = guard.as_mut() else { return };
 
     // One file per UTC day.
-    let day = chrono_day(pdp.timestamp());
+    let day = chrono_day(ts);
     if log.writer.is_none() || log.day != day {
         if let Some(w) = log.writer.as_mut() {
             let _ = w.flush();

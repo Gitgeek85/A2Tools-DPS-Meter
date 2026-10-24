@@ -553,6 +553,16 @@ impl StreamProcessor {
         }
 
         if is_heal {
+            // Fork: heals/HoTs on or by you go in the hit log too (with target).
+            crate::combat::hit_log::record_event(
+                self.override_timestamp.unwrap_or_else(crate::clock::now_ms),
+                if effect_type == 0x0B { "hot" } else { "heal" },
+                actor_info.value as i32,
+                target_info.value as i32,
+                skill_code as i32,
+                amount_info.value as i64,
+                self.data_storage.local_player_id(),
+            );
             // Healing done — recorded per healer. No allowlist (the heal effect_type
             // is the gate). HoT = 0x0B. This runs on framed perfect packets only, so
             // there is no embedded over-read into adjacent records (the artifact that
@@ -1801,6 +1811,16 @@ impl StreamProcessor {
                 // MP (or another resource) restored, not HP: neither damage
                 // nor healing. A Water Spirit's attack sends one of these to
                 // its Spiritmaster (16990002, 20 MP), filed under 100011.
+                // Fork: keep it in the hit log as an "mp" event.
+                crate::combat::hit_log::record_event(
+                    self.override_timestamp.unwrap_or_else(crate::clock::now_ms),
+                    "mp",
+                    actor_value as i32,
+                    target_value as i32,
+                    exact_skill_code as i32,
+                    final_damage as i64,
+                    self.data_storage.local_player_id(),
+                );
             } else if actor_value != target_value {
                 let mut pdp = ParsedDamagePacket::new();
                 if let Some(ts) = self.override_timestamp {
@@ -1827,6 +1847,15 @@ impl StreamProcessor {
                 // second_value, so `final_damage` is the correct heal amount. Recording
                 // it as healing makes the HEAL view capture instant self-heals, not just
                 // HoTs. (The cast-marker variant breaks out earlier on its and_result.)
+                crate::combat::hit_log::record_event(
+                    self.override_timestamp.unwrap_or_else(crate::clock::now_ms),
+                    "heal",
+                    actor_value as i32,
+                    actor_value as i32,
+                    resolved_skill_code as i32,
+                    final_damage as i64,
+                    self.data_storage.local_player_id(),
+                );
                 self.data_storage.append_heal(
                     actor_value,
                     resolved_skill_code,

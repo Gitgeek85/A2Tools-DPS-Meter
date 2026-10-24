@@ -826,7 +826,14 @@ impl DataStorage {
             log.timeline.prune(ms.saturating_sub(ABNORMAL_RETENTION_MS));
             log.pruned_ms = ms;
         }
+        let before = log.timeline.stats.len();
         log.timeline.note(ms, packet);
+        // Fork: log your stat-sheet records raw (HP/MP ids to be mapped).
+        if super::hit_log::is_enabled() && log.timeline.stats.len() > before {
+            for ev in &log.timeline.stats[before..] {
+                super::hit_log::record_stats(ev.ms, ev.entity, ev.whole_sheet, &ev.values);
+            }
+        }
     }
 
     /// Every abnormal instance on any time from `start_ms` to `end_ms`.
@@ -1414,12 +1421,13 @@ impl DataStorage {
                         super::hit_log::Kind::Unknown
                     }
                 };
+                let friendly = is_friendly_action(&inner, actor_id, target_id);
                 if actor_r == me && target_r != me {
                     let code = inner.mob_storage.get(&target_id).copied().unwrap_or(0);
-                    super::hit_log::record(&pdp, true, kind_of(target_id), code);
+                    super::hit_log::record(&pdp, true, kind_of(target_id), code, friendly);
                 } else if target_r == me && actor_r != me {
                     let code = inner.mob_storage.get(&actor_id).copied().unwrap_or(0);
-                    super::hit_log::record(&pdp, false, kind_of(actor_id), code);
+                    super::hit_log::record(&pdp, false, kind_of(actor_id), code, friendly);
                 }
             }
         }
