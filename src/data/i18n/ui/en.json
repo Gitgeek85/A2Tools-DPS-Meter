@@ -544,9 +544,9 @@
       "autoUploadHint": "When a boss fight ends it is uploaded to your account, with the visibility you chose on a2tools.app. Other players stay masked. Training dummies are never uploaded."
     },
     "sendLogs": {
-      "hint": "Sends your 3 most recent packet logs to the developer, for a bug report.",
+      "hint": "Sends your debug log and your most recent packet logs (3 files in all) to the developer, for a bug report.",
       "button": "Send Logs to Dev",
-      "confirm": "Send your 3 most recent packet logs to the A2 Tools developer?\n\nPacket logs are raw game traffic recorded while packet logging was on, including character names. Only the developer can open them, and they are deleted after 30 days.",
+      "confirm": "Send your debug log and your most recent packet logs to the A2 Tools developer?\n\nThe debug log records what the meter did. Packet logs are raw game traffic recorded while packet logging was on. Both can include character names. Only the developer can open them, and they are deleted after 30 days.",
       "sending": "Sending...",
       "sent": "Sent. Your report code is {code}: give it to the developer on Discord.",
       "failed": "Could not send: {error}"

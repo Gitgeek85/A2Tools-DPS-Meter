@@ -532,9 +532,9 @@
       "supporter": "Mecenas"
     },
     "sendLogs": {
-      "hint": "Envía tus 3 registros de paquetes más recientes al desarrollador, para un informe de errores.",
+      "hint": "Envía tu registro de depuración y tus registros de paquetes más recientes (3 archivos en total) al desarrollador, para un informe de errores.",
       "button": "Enviar registros al dev",
-      "confirm": "¿Enviar tus 3 registros de paquetes más recientes al desarrollador de A2 Tools?\n\nLos registros de paquetes son el tráfico del juego en bruto grabado mientras el registro de paquetes estaba activado, incluidos los nombres de personajes. Solo el desarrollador puede abrirlos y se eliminan a los 30 días.",
+      "confirm": "¿Enviar tu registro de depuración y tus registros de paquetes más recientes al desarrollador de A2 Tools?\n\nEl registro de depuración anota lo que hizo el medidor. Los registros de paquetes son el tráfico del juego en bruto grabado mientras el registro de paquetes estaba activado. Ambos pueden incluir nombres de personajes. Solo el desarrollador puede abrirlos y se eliminan a los 30 días.",
       "sending": "Enviando...",
       "sent": "Enviado. Tu código de informe es {code}: dáselo al desarrollador en Discord.",
       "failed": "No se pudo enviar: {error}"
