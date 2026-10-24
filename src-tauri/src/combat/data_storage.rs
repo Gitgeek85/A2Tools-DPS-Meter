@@ -1395,6 +1395,35 @@ impl DataStorage {
             inner.despawned_summon_ids.remove(&actor_id);
         }
 
+        // Fork: per-hit log for the local player (outgoing and incoming).
+        if super::hit_log::is_enabled() {
+            if let Some(me) = inner.local_player_id {
+                let me = me as i32;
+                let actor_r = summon_resolver::resolve(actor_id, &inner.summon_storage);
+                let target_r = summon_resolver::resolve(target_id, &inner.summon_storage);
+                let kind_of = |id: i32| {
+                    if inner.boss_entity_ids.contains(&id) {
+                        super::hit_log::Kind::Boss
+                    } else if inner.training_dummy_ids.contains(&id) {
+                        super::hit_log::Kind::Dummy
+                    } else if inner.mob_storage.contains_key(&id) {
+                        super::hit_log::Kind::Mob
+                    } else if inner.known_player_ids.contains(&id) {
+                        super::hit_log::Kind::Player
+                    } else {
+                        super::hit_log::Kind::Unknown
+                    }
+                };
+                if actor_r == me && target_r != me {
+                    let code = inner.mob_storage.get(&target_id).copied().unwrap_or(0);
+                    super::hit_log::record(&pdp, true, kind_of(target_id), code);
+                } else if target_r == me && actor_r != me {
+                    let code = inner.mob_storage.get(&actor_id).copied().unwrap_or(0);
+                    super::hit_log::record(&pdp, false, kind_of(actor_id), code);
+                }
+            }
+        }
+
         // NPC actors using NPC skills: track damage received on the player target, then skip
         let uses_npc_skill = (1_000_000..=9_999_999).contains(&skill_code);
         if inner.mob_storage.contains_key(&actor_id)

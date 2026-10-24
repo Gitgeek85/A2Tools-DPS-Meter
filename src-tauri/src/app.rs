@@ -3238,6 +3238,11 @@ pub fn run() {
             if settings.get("dpsMeter.debugLoggingEnabled").as_deref() == Some("true") {
                 logging::logger::set_debug_enabled(true, &app_data_dir);
             }
+            // Fork: per-hit log, on unless turned off in settings.json.
+            crate::combat::hit_log::set_enabled(
+                settings.get("dpsMeter.hitLogEnabled").as_deref() != Some("false"),
+                &app_data_dir,
+            );
             if settings.get("dpsMeter.saveRawPackets").as_deref() == Some("true") {
                 logging::logger::set_packet_log_enabled(true, &app_data_dir);
             }
