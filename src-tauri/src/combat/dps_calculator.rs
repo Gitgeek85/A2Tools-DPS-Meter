@@ -88,6 +88,8 @@ pub struct DpsCalculator {
     target_selection_mode: TargetSelectionMode,
     last_known_local_id: Option<i64>,
     all_targets_window_ms: i64,
+    /// Fork: in All Targets mode, show only you and your party.
+    all_targets_party_only: bool,
     nickname_job_cache: HashMap<String, String>,
     /// Boss targets saved as ended, with the time of their last hit then. A
     /// target hit again after that is saved again, so a fight with a long
@@ -118,6 +120,7 @@ impl DpsCalculator {
             target_selection_mode: TargetSelectionMode::BossTargets,
             last_known_local_id: None,
             all_targets_window_ms: 120_000,
+            all_targets_party_only: true,
             nickname_job_cache: HashMap::new(),
             saved_boss_targets: HashMap::new(),
             every_fight: false,
@@ -151,6 +154,14 @@ impl DpsCalculator {
             self.last_damage_gen = -1;
         }
         self.all_targets_window_ms = ms;
+    }
+
+    /// Fork: All Targets shows only you and your party (on) or everyone (off).
+    pub fn set_all_targets_party_only(&mut self, on: bool) {
+        if on != self.all_targets_party_only {
+            self.last_damage_gen = -1;
+        }
+        self.all_targets_party_only = on;
     }
 
     pub fn mark_all_targets_saved(&mut self) {
@@ -586,6 +597,26 @@ impl DpsCalculator {
         }
         for uid in to_remove {
             dps_data.map.remove(&uid);
+        }
+
+        // Fork: All Targets, party only. Every enemy your side hit in the
+        // window still counts, but strangers nearby get no row, and the total
+        // and percentages are your party's alone.
+        if self.target_selection_mode == TargetSelectionMode::AllTargets
+            && self.all_targets_party_only
+            && local_ids.is_some()
+        {
+            let local_name = self.data_storage.local_character_name();
+            dps_data.map.retain(|uid, d| {
+                let name = d.nickname.trim();
+                local_ids.as_ref().is_some_and(|ids| ids.contains(uid))
+                    || local_name.as_deref().is_some_and(|n| n.trim() == name)
+                    || party_members.contains_key(name)
+            });
+            total_damage = dps_data.map.values().map(|d| d.amount).sum();
+            for d in dps_data.map.values_mut() {
+                d.damage_contribution = if total_damage > 0.0 { d.amount / total_damage * 100.0 } else { 0.0 };
+            }
         }
 
         if let Some(shown) = self.world_boss_rows(&mut dps_data, &combat_data, &local_ids, &party_members, total_damage, target_current_hp, bt) {

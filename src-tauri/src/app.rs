@@ -874,6 +874,10 @@ fn dps_rate_ms(settings: &Settings) -> u64 {
 /// The All Targets time range (Settings), in milliseconds.
 const ALL_TARGETS_WINDOW_KEY: &str = "dpsMeter.allTargetsWindowMs";
 
+/// Fork: All Targets shows only you and your party ("true", the default) or
+/// everyone nearby ("false").
+const ALL_TARGETS_PARTY_ONLY_KEY: &str = "dpsMeter.allTargetsPartyOnly";
+
 fn apply_all_targets_window(state: &AppState, value: &str) {
     if let Ok(ms) = value.trim().parse::<i64>() {
         state.dps_calculator.lock().set_all_targets_window_ms(ms);
@@ -1051,6 +1055,9 @@ fn update_settings(
     if state.settings.set(&key, &value) {
         if key == ALL_TARGETS_WINDOW_KEY {
             apply_all_targets_window(&state, &value);
+        }
+        if key == ALL_TARGETS_PARTY_ONLY_KEY {
+            state.dps_calculator.lock().set_all_targets_party_only(value.trim() != "false");
         }
         if key == GLOBAL_HOTKEYS_KEY {
             apply_global_hotkeys(&app);
@@ -3324,6 +3331,9 @@ pub fn run() {
             if let Some(ms) = settings.get(ALL_TARGETS_WINDOW_KEY).and_then(|v| v.trim().parse::<i64>().ok()) {
                 dps_calculator.set_all_targets_window_ms(ms);
             }
+            dps_calculator.set_all_targets_party_only(
+                settings.get(ALL_TARGETS_PARTY_ONLY_KEY).as_deref() != Some("false"),
+            );
 
             // Load logging settings from saved state
             if settings.get("dpsMeter.debugLoggingEnabled").as_deref() == Some("true") {
